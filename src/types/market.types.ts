@@ -17,10 +17,7 @@ export enum ICategory {
   Others = "Others",
 }
 
-interface PriceHistory{
-  amount: number;       // the price value
-  date: Date;
-}
+
 export enum MarketNames{
   Charanci = "Charanci",
   Ajiwa = "Ajiwa",
@@ -33,8 +30,7 @@ export interface IMarketProduct {
   category:ICategory;
   quantityAvailable?: number;
   description?: string;
-  market: string;
-  priceHistory:PriceHistory[]
+  marketId: string;
 }
 
 // export type MarketNames = {

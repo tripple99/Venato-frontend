@@ -79,11 +79,8 @@ export default function Navbar() {
 
   {/* Buttons */}
   <div className="flex gap-2">
-    <Button asChild className="bg-white text-black">
-      <RouterLink to="/auths/sign-up">Sign Up</RouterLink>
-    </Button>
-    <Button asChild className="bg-white text-black">
-      <RouterLink to="/auths/login">Login</RouterLink>
+    <Button asChild className="bg-white text-black w-full hover:bg-white/20">
+      <RouterLink to="/auth/register">Get Started</RouterLink>
     </Button>
   </div>
 </div>
@@ -125,12 +122,10 @@ export default function Navbar() {
      
     ))}
      <div className="flex flex-col gap-4">
-    <Button asChild className="bg-primary-venato text-white">
-      <RouterLink to="/auths/sign-up">Sign Up</RouterLink>
+    <Button asChild className="bg-primary-venato w-full text-white">
+      <RouterLink to="/auth/register">Get Started</RouterLink>
     </Button>
-    <Button asChild className="bg-primary-venato text-white">
-      <RouterLink to="/auths/login">Login</RouterLink>
-    </Button>
+
   </div>
       </div> 
 </div>

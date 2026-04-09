@@ -17,20 +17,20 @@ import { cn } from "@/lib/utils";
 import {
   Bell,
   ClipboardList,
-  // Package,
-  // FileSignature,
-  // AlertTriangle,
-
+  Package,
+  ShieldCheck,
+  AlertTriangle,
+  Store,
   LayoutDashboardIcon,
   LogOut,
   LayoutList,
   Menu,
   PanelLeft,
-  Settings,
-  X,
 } from "lucide-react";
-import { useState } from "react";
-import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, Outlet, useLocation, useNavigate, Navigate } from "react-router-dom";
+import { useAuthStore } from "@/store/authStore";
+import { AuthRole } from "@/model/auth.model";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -47,33 +47,68 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-
+import { authAPI } from "@/api/api-client";
 import { toast } from "sonner";
 
+interface SidebarItem {
+  title: string;
+  icon: React.ReactNode;
+  url: string;
+}
 
-const sidebarItems = [
-  {
-    title: "Dashboard",
-    icon: <LayoutDashboardIcon className="w-5 h-5" />,
-    url: "/admin",
-  },
-  {
-    title: "Products",
-    icon: <LayoutDashboardIcon className="w-5 h-5" />,
-    url: "/admin/products",
-  },
-  {
-    title:"Product List",
-    icon:<ClipboardList className="w-5 h-5" />,
-    url: "/admin/product-list",
-
-  },
-  {
-    title: "Settings",
-    icon: <Settings className="w-5 h-5" />,
-    url: "/admin/settings",
-  },
-];
+const ROLE_CONFIG: Record<AuthRole, SidebarItem[]> = {
+  [AuthRole.User]: [
+    {
+      title: "Dashboard",
+      icon: <LayoutDashboardIcon className="w-5 h-5" />,
+      url: "/user",
+    },
+    {
+      title: "Inventory",
+      icon: <Package className="w-5 h-5" />,
+      url: "/user/inventory",
+    },
+    {
+      title: "Watch list",
+      icon: <LayoutList className="w-5 h-5" />,
+      url: "/user/watchlist",
+    },
+    {
+      title: "Alerts",
+      icon: <AlertTriangle className="w-5 h-5" />,
+      url: "/user/alerts",
+    },
+  ],
+  [AuthRole.Admin]: [
+    {
+      title: "Dashboard",
+      icon: <LayoutDashboardIcon className="w-5 h-5" />,
+      url: "/admin",
+    },
+    {
+      title: "Products Management",
+      icon: <ClipboardList className="w-5 h-5" />,
+      url: "/admin/products",
+    },
+  ],
+  [AuthRole.superAdmin]: [
+    {
+      title: "Dashboard",
+      icon: <LayoutDashboardIcon className="w-5 h-5" />,
+      url: "/superadmin",
+    },
+    {
+      title: "Market Management",
+      icon: <Store className="w-5 h-5" />,
+      url: "/superadmin/market",
+    },
+    {
+      title: "Access Control",
+      icon: <ShieldCheck className="w-5 h-5" />,
+      url: "/superadmin/access",
+    },
+  ],
+};
 
 export default function AdminLayout() {
   const [notifications] = useState(5);
@@ -84,17 +119,31 @@ export default function AdminLayout() {
 
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuthStore();
+  const role = user?.roles;
+  console.log("....user.....",role)
+  const sidebarItems = useMemo(() => {
+    if (!role) return [];
+    return ROLE_CONFIG[role as AuthRole] || [];
+  }, [role]);
 
+  const dashboardUrl = useMemo(() => {
+    if (role === AuthRole.superAdmin) return "/super-admin";
+    if (role === AuthRole.Admin) return "/admin";
+    return "/dashboard";
+  }, [role]);
 
-  // Get user initials for avatar
-
+  if (!user || !role) {
+    return <Navigate to="/auth/login" replace />;
+  }
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-
+      // Add actual logout logic from authStore if available
+      await authAPI.logout()
       toast.success("Logged out successfully");
-
+      navigate("/auth/login");
     } catch (error) {
       console.error("Logout error:", error);
       toast.error("Failed to logout. Please try again.");
@@ -102,6 +151,14 @@ export default function AdminLayout() {
       setIsLoggingOut(false);
       setLogOutModal(false);
     }
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
   };
 
   const isActiveLink = (path: string) => {
@@ -122,7 +179,7 @@ export default function AdminLayout() {
     };
   };
 
-  const handleSidebarItemClick = (item: any) => {
+  const handleSidebarItemClick = (item: SidebarItem) => {
     if (item.url) {
       // Navigate to the item's URL
       navigate(item.url);
@@ -198,21 +255,19 @@ export default function AdminLayout() {
                 <div className="flex items-center gap-3">
                   <Avatar className="h-8 w-8">
                     <AvatarImage
-                      src={
-                        "https://ferf1mheo22r9ira.public.blob.vercel-storage.com/avatar-01-n0x8HFv8EUetf9z6ht0wScJKoTHqf8.png"
-                      }
-                      alt="User"
+                      src={user?.image}
+                      alt={user?.fullname}
                     />
                     <AvatarFallback className="bg-primary text-primary-foreground">
-
+                      {getInitials(user?.fullname || "U")}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col items-start">
                     <span className="text-sm font-medium text-foreground">
-                      {"John Doe"}
+                      {user?.fullname}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {"john.doe@example.com"}
+                      {user?.email}
                     </span>
                   </div>
                 </div>
@@ -280,19 +335,19 @@ export default function AdminLayout() {
                 <div className="flex items-center gap-3">
                   <Avatar className="h-8 w-8">
                     <AvatarImage
-                      src={  "https://ferf1mheo22r9ira.public.blob.vercel-storage.com/avatar-01-n0x8HFv8EUetf9z6ht0wScJKoTHqf8.png"}
-                      alt={"John Doe"}
+                      src={user?.image}
+                      alt={user?.fullname}
                     />
                     <AvatarFallback className="bg-primary text-primary-foreground">
-
+                      {getInitials(user?.fullname || "U")}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col items-start">
                     <span className="text-sm font-medium text-foreground">
-                      {"John Doe"}
+                      {user?.fullname}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {"john.doe@example.com"}
+                      {user?.email}
                     </span>
                   </div>
                 </div>
@@ -332,7 +387,7 @@ export default function AdminLayout() {
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
                   <Link
-                    to="/"
+                    to={dashboardUrl}
                     className="hover:text-foreground transition-colors"
                   >
                     Dashboard
@@ -382,14 +437,11 @@ export default function AdminLayout() {
                 <DropdownMenuTrigger className="focus:outline-none">
                   <Avatar className="h-7 w-7 sm:h-8 sm:w-8 ring-2 ring-primary cursor-pointer">
                     <AvatarImage
-                      src={
-
-                        "https://ferf1mheo22r9ira.public.blob.vercel-storage.com/avatar-01-n0x8HFv8EUetf9z6ht0wScJKoTHqf8.png"
-                      }
-                      alt={"User"}
+                      src={user?.image}
+                      alt={user?.fullname}
                     />
                     <AvatarFallback className="bg-primary text-primary-foreground">
-                      {}
+                      {getInitials(user?.fullname || "U")}
                     </AvatarFallback>
                   </Avatar>
                 </DropdownMenuTrigger>

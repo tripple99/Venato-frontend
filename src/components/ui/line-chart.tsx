@@ -17,56 +17,88 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 
+import { Skeleton } from "@/components/ui/skeleton"
+
 export const description = "A line chart with dots and colors"
 
-const chartData = [
-  { product: "Wheat", stock: 120, fill: "var(--color-wheat)" },
-  { product: "Maize", stock: 80, fill: "var(--color-maize)" },
-  { product: "Rice", stock: 150, fill: "var(--color-rice)" },
-  { product: "Sorghum", stock: 70, fill: "var(--color-sorghum)" },
-  { product: "Millet", stock: 90, fill: "var(--color-millet)" },
+export interface ChartDataPoint {
+  label: string;
+  value: number;
+  fill?: string;
+}
+
+interface ChartProps {
+  data?: ChartDataPoint[];
+  title?: string;
+  description?: string;
+  footerText?: string;
+  trendingText?: string;
+  isLoading?: boolean;
+}
+
+const defaultChartData: ChartDataPoint[] = [
+  { label: "Wheat", value: 120, fill: "var(--color-wheat)" },
+  { label: "Maize", value: 80, fill: "var(--color-maize)" },
+  { label: "Rice", value: 150, fill: "var(--color-rice)" },
+  { label: "Sorghum", value: 70, fill: "var(--color-sorghum)" },
+  { label: "Millet", value: 90, fill: "var(--color-millet)" },
 ]
 
-const chartConfig = {
-  stock: {
-    label: "Stock",
+const defaultChartConfig = {
+  value: {
+    label: "Value",
     color: "var(--chart-2)",
-  },
-  wheat: {
-    label: "Wheat",
-    color: "var(--chart-1)",
-  },
-  maize: {
-    label: "Maize",
-    color: "var(--chart-2)",
-  },
-  rice: {
-    label: "Rice",
-    color: "var(--chart-3)",
-  },
-  sorghum: {
-    label: "Sorghum",
-    color: "var(--chart-4)",
-  },
-  millet: {
-    label: "Millet",
-    color: "var(--chart-5)",
   },
 } satisfies ChartConfig
 
+export function ChartLineDotsColors({ 
+  data = defaultChartData, 
+  title = "Product Analytics", 
+  description = "Recent product price trends",
+  footerText = "Showing latest product entries",
+  trendingText = "Trending up by 5.2% this month",
+  isLoading = false
+}: ChartProps) {
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-1/3 mb-1" />
+          <Skeleton className="h-4 w-1/2" />
+        </CardHeader>
+        <CardContent>
+          <div className="h-[250px] w-full flex flex-col justify-end gap-2">
+            <div className="flex items-end gap-4 h-full px-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="flex-1 w-full" style={{ height: `${20 + i * 15}%` }} />
+              ))}
+            </div>
+            <div className="flex justify-between px-4 mt-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-3 w-8" />
+              ))}
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter className="flex-col items-start gap-2 pt-4">
+          <Skeleton className="h-4 w-2/3" />
+          <Skeleton className="h-3 w-1/2" />
+        </CardFooter>
+      </Card>
+    );
+  }
 
-export function ChartLineDotsColors() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Line Chart - Dots Colors</CardTitle>
-        <CardDescription>January - June 2024</CardDescription>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <ChartContainer config={chartConfig}>
+        <ChartContainer config={defaultChartConfig}>
           <LineChart
             accessibilityLayer
-            data={chartData}
+            data={data}
             margin={{
               top: 24,
               left: 24,
@@ -79,25 +111,25 @@ export function ChartLineDotsColors() {
               content={
                 <ChartTooltipContent
                   indicator="line"
-                  nameKey="stock"
+                  nameKey="value"
                   hideLabel
                 />
               }
             />
             <Line
-              dataKey="stock"
+              dataKey="value"
               type="natural"
-              stroke="var(--color-stock)"
+              stroke="var(--chart-2)"
               strokeWidth={2}
               dot={({ payload, ...props }) => {
                 return (
                   <Dot
-                    key={payload.product}
+                    key={payload.label}
                     r={5}
                     cx={props.cx}
                     cy={props.cy}
-                    fill={payload.fill}
-                    stroke={payload.fill}
+                    fill={payload.fill || "var(--chart-2)"}
+                    stroke={payload.fill || "var(--chart-2)"}
                   />
                 )
               }}
@@ -107,10 +139,10 @@ export function ChartLineDotsColors() {
       </CardContent>
       <CardFooter className="flex-col items-start gap-2 text-sm">
         <div className="flex gap-2 leading-none font-medium">
-          Trending up by 5.2% this month <TrendingUp className="h-4 w-4" />
+          {trendingText} <TrendingUp className="h-4 w-4" />
         </div>
         <div className="text-muted-foreground leading-none">
-          Showing total visitors for the last 6 months
+          {footerText}
         </div>
       </CardFooter>
     </Card>
