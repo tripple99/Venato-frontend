@@ -1,13 +1,13 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/ui/spinner";
 import authService from "@/service/auth.service"; // Assuming this service exists
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import z from "zod";
-import { Eye, EyeOff, LockKeyhole } from 'lucide-react';
+import { LockKeyhole } from 'lucide-react';
+
 
 // 1. Define Zod Schema
 const resetPasswordSchema = z
@@ -27,7 +27,7 @@ export default function ResetPasswordPage() {
   // const token = searchParams.get("token"); // Assuming token comes from URL
 
   // 2. State Management
-  const [otp, _setOtp] = useState(localStorage.getItem("otp") || "");
+  const [otp, _setOtp] = useState(localStorage.getItem("resetToken") || "");
   const [formValues, setFormValues] = useState<ResetPasswordFormValues>({
     password: "",
     confirmPassword: "",
@@ -39,9 +39,7 @@ export default function ResetPasswordPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Visibility Toggles
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
 
   const navigate = useNavigate();
 
@@ -80,7 +78,6 @@ export default function ResetPasswordPage() {
       // await authService.resetPassword(token, formValues.password);
 
       // Simulating API delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
       if(!otp){
         toast.error("Token not found", {
           description: "Please try again.",
@@ -91,16 +88,17 @@ export default function ResetPasswordPage() {
       const data = {
       password:formValues.password,
       confirmPassword:formValues.confirmPassword,
-      token:otp,
+      resetToken:otp,
       // phoneNumber:phone
       }
       const response = await authService.resetPassword(data);
 
-      if (response.status === "success") {
+      if (response.status === "Success") {
         toast.success("Password Updated", {
           description: response.message,
         });
-        localStorage.removeItem("forgot-password-phone");
+        localStorage.removeItem("forgot-password-email");
+        localStorage.removeItem("resetToken");
         navigate("/auth/login");
       } else {
         toast.error("Reset failed", {
@@ -135,30 +133,15 @@ export default function ResetPasswordPage() {
             <Label htmlFor="password" className="block text-sm">
               New Password
             </Label>
-            <div className="relative">
-              <Input
-                type={showPassword ? "text" : "password"}
-                name="password"
-                id="password"
-                value={formValues.password}
-                onChange={handleChange("password")}
-                aria-invalid={!!errors.password}
-                className="rounded-full h-11 shadow-none pr-10" // Extra padding for icon
-                placeholder="••••••••"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                tabIndex={-1} // Prevent tabbing to this button if preferred
-              >
-                {showPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
-            </div>
+            <PasswordInput
+              name="password"
+              id="password"
+              value={formValues.password}
+              onChange={handleChange("password")}
+              aria-invalid={!!errors.password}
+              className="rounded-full h-11 shadow-none"
+              placeholder="••••••••"
+            />
             {errors.password && (
               <p className="text-sm text-destructive">
                 {errors.password}
@@ -171,30 +154,15 @@ export default function ResetPasswordPage() {
             <Label htmlFor="confirmPassword" className="block text-sm">
               Confirm Password
             </Label>
-            <div className="relative">
-              <Input
-                type={showConfirmPassword ? "text" : "password"}
-                name="confirmPassword"
-                id="confirmPassword"
-                value={formValues.confirmPassword}
-                onChange={handleChange("confirmPassword")}
-                aria-invalid={!!errors.confirmPassword}
-                className="rounded-full h-11 shadow-none pr-10"
-                placeholder="••••••••"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                tabIndex={-1}
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-              </button>
-            </div>
+            <PasswordInput
+              name="confirmPassword"
+              id="confirmPassword"
+              value={formValues.confirmPassword}
+              onChange={handleChange("confirmPassword")}
+              aria-invalid={!!errors.confirmPassword}
+              className="rounded-full h-11 shadow-none"
+              placeholder="••••••••"
+            />
             {errors.confirmPassword && (
               <p className="text-sm text-destructive">
                 {errors.confirmPassword}
@@ -205,17 +173,11 @@ export default function ResetPasswordPage() {
           {/* Submit Button */}
           <Button
             type="submit"
-            className="w-full rounded-full h-11"
-            disabled={isSubmitting}
+            className="w-full rounded-full cursor-pointer  h-11 bg-primary-venato text-white dark:text-[#111827] hover:bg-primary/80 dark:hover:bg-gray-200 font-bold text-base transition-all shadow-xl shadow-primary/10 active:scale-[0.98] disabled:opacity-70"
+            loading={isSubmitting}
+            loadingText="Resetting Password..."
           >
-            {isSubmitting ? (
-              <div className="flex items-center justify-center gap-2">
-                <Spinner className="h-4 w-4" />
-                <span>Resetting Password...</span>
-              </div>
-            ) : (
-              "Reset Password"
-            )}
+            Reset Password
           </Button>
         </div>
       </div>

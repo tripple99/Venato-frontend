@@ -8,6 +8,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Input } from "@/components/ui/input"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
@@ -16,7 +17,7 @@ import authService from "@/service/auth.service"
 import toast from "react-hot-toast"
 import { Link } from "react-router-dom"
 import { useNavigate } from "react-router-dom"
-
+import { useState } from "react"
 
 export function LoginForm({
   className,
@@ -30,20 +31,22 @@ export function LoginForm({
     },
   })
   const navigate = useNavigate()
-  console.log("Login form")
+  const [loading, setLoading] = useState(false)
   const onSubmit = async (data: Login) => {
-    console.log("Clicked")
+    setLoading(true)
     try {
-    const res =  await authService.login(data)
-      // form.reset()
-      console.log(res)
+      const res = await authService.login(data)
+      form.reset()
+
       navigate(`/${res.roles}`)
       toast.success("Logged in successfully")
       // Handle redirect or state update here
     } catch (error: unknown) {
       console.error("Login failed:", error)
-      form.reset()
+
       // Error is already handled by GlobalErrorHandler in authService
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -91,8 +94,7 @@ export function LoginForm({
                   </Link>
                 </div>
                 <FormControl>
-                  <Input
-                    type="password"
+                  <PasswordInput
                     {...field}
                     className="rounded-full h-11 shadow-none border-slate-200 focus:border-primary-venato transition-colors"
                   />
@@ -102,7 +104,11 @@ export function LoginForm({
             )}
           />
 
-          <Button type="submit" className="w-full bg-primary-venato text-white rounded-full h-11 font-semibold hover:opacity-90 transition-opacity">
+          <Button 
+            type="submit" 
+            loading={loading}
+            className="w-full bg-primary-venato text-white rounded-full h-11 font-semibold hover:opacity-90 transition-opacity"
+          >
             Continue
           </Button>
         </form>

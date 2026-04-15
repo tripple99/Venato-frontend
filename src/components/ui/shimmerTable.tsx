@@ -29,9 +29,9 @@ export function ShimmerTable({ columnsCount, rowCount = 5 }: ShimmerTableProps) 
   };
 
   const ShimmerLine = () => (
-    <div className="h-4 w-full relative overflow-hidden rounded bg-gray-200 dark:bg-slate-800">
+    <div className="h-4 w-full relative overflow-hidden rounded bg-muted/50">
       <motion.div
-        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 dark:via-slate-700/30 to-transparent"
+        className="absolute inset-0 bg-gradient-to-r from-transparent via-foreground/5 to-transparent"
         style={{
           backgroundSize: "200% 100%",
         }}
@@ -43,13 +43,13 @@ export function ShimmerTable({ columnsCount, rowCount = 5 }: ShimmerTableProps) 
   );
 
   return (
-    <div className="rounded-lg border bg-white dark:bg-slate-900 dark:border-slate-800 overflow-hidden">
+    <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm">
       <Table>
-        <TableHeader className="bg-muted dark:bg-slate-800 h-12">
+        <TableHeader className="bg-muted/30 h-12">
           <TableRow>
             {Array.from({ length: columnsCount }).map((_, i) => (
               <TableHead key={i}>
-                 <div className="h-4 w-24 bg-gray-300 dark:bg-slate-700 rounded-full animate-pulse opacity-50" />
+                 <div className="h-4 w-24 bg-muted animate-pulse rounded-full opacity-50" />
               </TableHead>
             ))}
           </TableRow>

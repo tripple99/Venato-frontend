@@ -24,6 +24,5 @@ export interface Product {
   market: Market; 
   createdBy: string;
   updatedBy?: string;
-  __v?: number;
   description?: string;
 }

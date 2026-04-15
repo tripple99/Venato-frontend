@@ -1,180 +1,248 @@
 import { type Products } from "@/types/products"
-import { useState } from "react"
-import {Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle} from "@/components/ui/card";
+import { useEffect } from "react"
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import {Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle} from "@/components/ui/card";
 import { IUnit, ICategory, MarketNames } from "@/types/market.types";
 import { Button } from "@/components/ui/button";
 import {Label} from "@/components/ui/label";
 import {Input} from "@/components/ui/input";
 import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from "@/components/ui/select"
-import {Eye, MapPin, Plus, Scale, Search, Tag, TrendingUp,X,DollarSign,Package,Box,Layers} from "lucide-react";
+import { MapPin, X, DollarSign, Package, Box, Layers, Tag } from "lucide-react";
 import { toast } from "sonner"
+import { type IMarketData } from "@/model/market.model";
 
-interface ProductViewProps{
-    onclose:(value:boolean)=>void,
-    addProductVal:(product:Products)=>void,
-    editView?:boolean
-    editProduct?:Products | null
-    updateProductVal?:(product:Products)=>void
+const productSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  price: z.number().min(1, "Price must be at least 1"),
+  unit: z.nativeEnum(IUnit),
+  category: z.nativeEnum(ICategory),
+  marketId: z.string().min(1, "Please select a market"),
+});
+
+type ProductFormValues = z.infer<typeof productSchema>;
+
+interface ProductViewProps {
+    onclose: (value: boolean) => void,
+    addProductVal: (product: Products) => void,
+    productVal?: Products | null,
+    markets: IMarketData[],
+    editView?: boolean
+    editProduct?: Products | null
+    updateProductVal?: (product: Products) => void
 }
-export default function ProductView({onclose,addProductVal,editView=false,editProduct,updateProductVal}:ProductViewProps){
 
-        const [productVal,setProductVal ] = useState<Products>({
-        id: editProduct?.id || "",
-        name: editProduct?.name || "",
-        price: editProduct?.price || 0,
-        unit: editProduct?.unit || IUnit.TIYA,
-        category: editProduct?.category || ICategory.Grains,
-        market: editProduct?.market || MarketNames.Charanci,
-        created_at: new Date(),
-        update_at: new Date(),
-    })
-    const updateProduct = (product:Products)=>{
-        productVal.id = product.id || editProduct?.id || ""
-        productVal.name = product.name || editProduct?.name || ""
-        productVal.price = product.price || editProduct?.price || 0
-        productVal.unit = product.unit || editProduct?.unit || IUnit.TIYA
-        productVal.category = product.category || editProduct?.category || ICategory.Grains
-        productVal.market = product.market || editProduct?.market || MarketNames.Charanci
-        productVal.created_at = product.created_at
-        productVal.update_at = product.update_at
-    }
-    const handleUpdateProduct = ()=>{
-      if(updateProductVal){
-        updateProductVal(productVal)
-        console.log("Updated product",productVal)
-        toast.success("Your product has been successfully updated.")
-        onclose(false)
+export default function ProductView({ onclose, addProductVal, productVal, markets, editView = false, updateProductVal }: ProductViewProps) {
+    
+    const {
+      register,
+      handleSubmit,
+      control,
+      reset,
+      setValue,
+      formState: { errors, isSubmitting },
+    } = useForm<ProductFormValues>({
+      resolver: zodResolver(productSchema),
+      defaultValues: {
+        name: productVal?.name || "",
+        price: productVal?.price || 0,
+        unit: productVal?.unit || IUnit.TIYA,
+        category: productVal?.category || ICategory.Grains,
+        marketId: productVal?.market._id || "",
+      },
+    });
+
+    useEffect(() => {
+      if (productVal) {
+        reset({
+          name: productVal.name,
+          price: productVal.price,
+          unit: productVal.unit,
+          category: productVal.category,
+          marketId: productVal.market._id,
+        });
       }
-    }
-  const handleAddProduct = ()=>{
+    }, [productVal, reset]);
 
-   addProductVal(productVal)
-   toast.success( "Your product has been successfully added.");
-   onclose(false)
-  }
+    // Auto-select if only one market is available
+    useEffect(() => {
+      if (!editView && markets?.length === 1 && markets[0]._id) {
+        setValue("marketId", markets[0]._id);
+      }
+    }, [markets, editView, setValue]);
 
-    return(
-        <div>
-<div className="fixed inset-0 z-50 flex items-center  justify-center bg-black/50 p-3">
-  <Card className="w-5/6  scroll-auto max-w-xl mx-auto  p-8 rounded-xl shadow-xl bg-white">
-    <CardHeader className="mb-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Package className="h-6 w-6 text-primary-venato" />
-          <CardTitle className="text-3xl font-bold">{editView ? "Edit Product" : "Add Product"}</CardTitle>
-        </div>
-        <Button variant="outline" onClick={() => onclose(false)} className="p-2">
-          <X className="h-5 w-5" />
-        </Button>
+    const onSubmit = (data: ProductFormValues) => {
+      const selectedMarket = markets?.find(m => m._id === data.marketId);
+      
+      if (!selectedMarket && !editView) {
+        toast.error("Market data not found for selection");
+        return;
+      }
+
+      const fullProduct: Products = {
+        _id: productVal?._id || "",
+        name: data.name,
+        price: data.price,
+        unit: data.unit,
+        category: data.category,
+        market: {
+          _id: selectedMarket?._id || productVal?.market._id || "",
+          name: (selectedMarket?.name || productVal?.market.name) as MarketNames,
+          location: selectedMarket?.location || productVal?.market.location,
+        },
+        created_at: productVal?.created_at || new Date(),
+        update_at: new Date(),
+      };
+
+      if (editView && updateProductVal) {
+        updateProductVal(fullProduct);
+      } else {
+        addProductVal(fullProduct);
+      }
+      onclose(false);
+    };
+
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3">
+        <Card className="w-5/6 max-w-xl mx-auto rounded-xl shadow-xl bg-white overflow-hidden">
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <CardHeader className="p-6 border-b">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Package className="h-6 w-6 text-primary-venato" />
+                  <CardTitle className="text-2xl font-bold">{editView ? "Edit Product" : "Add Product"}</CardTitle>
+                </div>
+                <Button type="button" variant="ghost" onClick={() => onclose(false)} className="h-8 w-8 p-0">
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <CardDescription className="mt-1">
+                {editView ? "Update product details" : "Fill in product details to add a new product"}
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+              {/* Product Name */}
+              <div className="space-y-1.5">
+                <Label htmlFor="name" className="flex items-center gap-1.5 font-medium">
+                  <Tag className="h-4 w-4 text-gray-500" /> Name
+                </Label>
+                <Input
+                  id="name"
+                  {...register("name")}
+                  placeholder="e.g. Fresh Tomatoes"
+                  className={errors.name ? "border-red-500" : ""}
+                />
+                {errors.name && <p className="text-xs text-red-500">{errors.name.message}</p>}
+              </div>
+
+              {/* Product Price */}
+              <div className="space-y-1.5">
+                <Label htmlFor="price" className="flex items-center gap-1.5 font-medium">
+                  <DollarSign className="h-4 w-4 text-gray-500" /> Price (NGN)
+                </Label>
+                <Input
+                  id="price"
+                  type="number"
+                  {...register("price", { valueAsNumber: true })}
+                  placeholder="0"
+                  className={errors.price ? "border-red-500" : ""}
+                />
+                {errors.price && <p className="text-xs text-red-500">{errors.price.message}</p>}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Product Unit */}
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-1.5 font-medium">
+                    <Box className="h-4 w-4 text-gray-500" /> Unit
+                  </Label>
+                  <Controller
+                    name="unit"
+                    control={control}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger className={errors.unit ? "border-red-500" : ""}>
+                          <SelectValue placeholder="Select unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.values(IUnit).map((unit) => (
+                            <SelectItem key={unit} value={unit}>{unit}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.unit && <p className="text-xs text-red-500">{errors.unit.message}</p>}
+                </div>
+
+                {/* Product Category */}
+                <div className="space-y-1.5">
+                  <Label className="flex items-center gap-1.5 font-medium">
+                    <Layers className="h-4 w-4 text-gray-500" /> Category
+                  </Label>
+                  <Controller
+                    name="category"
+                    control={control}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger className={errors.category ? "border-red-500" : ""}>
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.values(ICategory).map((category) => (
+                            <SelectItem key={category} value={category}>{category}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.category && <p className="text-xs text-red-500">{errors.category.message}</p>}
+                </div>
+              </div>
+
+              {/* Product Market */}
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5 font-medium">
+                  <MapPin className="h-4 w-4 text-gray-500" /> Market
+                </Label>
+                <Controller
+                  name="marketId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className={errors.marketId ? "border-red-500" : ""}>
+                        <SelectValue placeholder="Select a market" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {markets?.map((market) => (
+                          <SelectItem key={market._id} value={market._id || ""}>
+                            {market.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.marketId && <p className="text-xs text-red-500">{errors.marketId.message}</p>}
+              </div>
+            </CardContent>
+
+            <CardFooter className="p-6 border-t flex justify-end gap-3">
+              <Button type="button" variant="outline" onClick={() => onclose(false)}>
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="bg-primary-venato hover:bg-primary-venato/90 cursor-pointer"
+              >
+                {isSubmitting ? "Processing..." : (editView ? "Update Product" : "Add Product")}
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
       </div>
-      <CardDescription className="text-gray-500 mt-1">
-        Fill in product details to add a new product
-      </CardDescription>
-    </CardHeader>
-
-    <CardContent className="grid  gap-x-8 gap-y-6 w-full">
-      {/* Product Name */}
-      <div className="flex flex-col gap-2 w-full">
-        <Label htmlFor="product-name" className="flex items-center gap-1">
-          <Tag className="h-5 w-5 text-gray-400" /> Name
-        </Label>
-        <Input
-          id="product-name"
-          type="text"
-          placeholder="Product Name"
-          value={productVal.name}
-          onChange={(e) =>
-            setProductVal({ ...productVal, name: e.target.value })
-          }
-        />
-      </div>
-
-      {/* Product Price */}
-      <div className="flex flex-col gap-2 w-full">
-        <Label htmlFor="product-price" className="flex items-center gap-1">
-          <DollarSign className="h-5 w-5 text-gray-400" /> Price
-        </Label>
-        <Input
-          id="product-price"
-          type="number"
-          placeholder="Product Price"
-          value={productVal.price}
-          onChange={(e) =>
-            setProductVal({ ...productVal, price: Number(e.target.value) })
-          }
-        />
-      </div>
-
-      {/* Product Unit */}
-      <div className="flex flex-col gap-2 w-full">
-        <Label htmlFor="product-unit" className="flex items-center gap-1">
-          <Box className="h-5 w-5 text-gray-400" /> Unit
-        </Label>
-        <Select value={productVal.unit} onValueChange={(value) => setProductVal({ ...productVal, unit: value as IUnit })}>
-          <SelectTrigger id="product-unit" className="w-full">
-            <SelectValue placeholder="Select a unit" />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.values(IUnit).map((unit) => (
-              <SelectItem key={unit} value={unit}>
-                {unit}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Product Category */}
-      <div className="flex flex-col gap-2 w-full">
-        <Label htmlFor="product-category" className="flex items-center gap-1">
-          <Layers className="h-5 w-5 text-gray-400" /> Category
-        </Label>
-        <Select value={productVal.category} onValueChange={(value) => setProductVal({ ...productVal, category: value as ICategory })}>
-          <SelectTrigger id="product-category" className="w-full">
-            <SelectValue placeholder="Select a category" />
-          </SelectTrigger>
-          <SelectContent>
-            {Object.values(ICategory).map((category) => (
-              <SelectItem key={category} value={category}>
-                {category}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Product Market */}
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="product-market" className="flex items-center gap-1">
-          <MapPin className="h-5 w-5 text-gray-400" /> Market
-        </Label>
-        <Select value={productVal.market} onValueChange={(value) => setProductVal({ ...productVal, market: value as MarketNames })}>
-          <SelectTrigger id="product-market" className="w-full">
-            <SelectValue placeholder="Select a market" />
-          </SelectTrigger>
-          <SelectContent className="w-full">
-            {Object.values(MarketNames).map((market) => (
-              <SelectItem key={market} value={market}>
-                {market}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    </CardContent>
-
-    <CardFooter className="mt-6 flex justify-end gap-4">
-      <Button variant="outline" onClick={() => onclose(false)}>
-        Close
-      </Button>
-      <Button variant="default" onClick={editView ? handleUpdateProduct : handleAddProduct}>
-        {editView ? "Update Product" : "Add Product"}
-      </Button>
-    </CardFooter>
-  </Card>
-</div>
-
-
-        </div>
-    )
+    );
 }

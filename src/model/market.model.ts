@@ -12,7 +12,7 @@ export interface ILocation {
 }
 
 export interface IMarketData {
-  _id?: string;
+  _id: string;
   name: string;
   currency: "NGN";
   location: ILocation;
@@ -22,7 +22,7 @@ export interface IMarketData {
 
 // Deprecated in favor of IMarketData
 export interface Market {
-  id: string;
+  _id: string;
   name: string;
   location: string;
   description?: string;

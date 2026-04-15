@@ -38,19 +38,19 @@ class AccessService {
     }
   }
 
+
+
+
   /**
    * (Super Admin) Revokes a user's access to a specific market or updates their role status.
    * @param userId The user's unique ID
    * @param marketId The market's unique ID
-   * @param payload Required user update details (role and market to revoke)
    */
   public async revokeUserAccess(
     userId: string, 
-    marketId: string, 
-    payload: { userRole: AuthRole; allowedMarkets: AllowedMarkets }
   ): Promise<ApiResponse<any> | undefined> {
     try {
-      const response = await apiClient.patch<ApiResponse<any>>(`${this.baseUrl}/revoke/${userId}/${marketId}`, payload);
+      const response = await apiClient.patch<ApiResponse<any>>(`${this.baseUrl}/revoke/${userId}`);
       toast.success(response.data.message || "User access revoked successfully");
       return response.data;
     } catch (error) {

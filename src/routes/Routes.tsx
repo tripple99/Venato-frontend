@@ -60,7 +60,7 @@ export const router  = createBrowserRouter([
  },
   {
     path: '/user',
-    // loader: requireAuth([AuthRole.User]),
+    loader: requireAuth([AuthRole.User]),
     element: <AdminLayout />,
     children: [
       { index: true, element: <UserDashboard /> },
@@ -82,7 +82,7 @@ export const router  = createBrowserRouter([
   },
   {
     path: '/superadmin',
-    // loader: requireAuth([AuthRole.superAdmin]),
+    loader: requireAuth([AuthRole.superAdmin]),
     element: <AdminLayout />,
     children: [
       { index: true, element: <SuperAdminDashboard /> },

@@ -361,7 +361,7 @@ export default function AdminLayout() {
       {/* Main Content */}
       <div
         className={cn(
-          "min-h-screen transition-all duration-300 ease-in-out",
+          "h-screen flex flex-col transition-all duration-300 ease-in-out",
           sidebarOpen ? "md:pl-64" : "md:pl-0"
         )}
       >
@@ -461,7 +461,7 @@ export default function AdminLayout() {
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-6 bg-muted/30 h-auto">
+        <main className="flex-1 p-4 md:p-6 bg-muted/10 overflow-auto">
           <Outlet />
         </main>
 

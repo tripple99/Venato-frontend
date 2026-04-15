@@ -1,4 +1,4 @@
-import type { ApiResponse } from "@/model/api";
+import type { ApiResponse,PaginatedApiResponse } from "@/model/api";
 import apiClient from "@/api/api-client";
 import { handleAnyError } from "@/handlers/GlobalErrorHandler";
 import { toast } from "sonner";
@@ -12,25 +12,27 @@ class ProductService {
    * Creates a new product in a specific market.
    * @param payload Product data including marketId
    */
-  public async createProduct(payload: IMarketProduct): Promise<ApiResponse<Product> | undefined> {
+  public async createProduct(payload: IMarketProduct): Promise<ApiResponse<{data:Product}>> {
     try {
-      const response = await apiClient.post<ApiResponse<Product>>(this.baseUrl, payload);
+      const response = await apiClient.post<ApiResponse<{data:Product}>>(this.baseUrl, payload);
       toast.success(response.data.message || "Product created successfully");
       return response.data;
     } catch (error) {
       handleAnyError(error);
+      throw error;
     }
   }
 
   /**
    * Fetches every product in the system.
    */
-  public async getAllProducts(): Promise<ApiResponse<Product[]> | undefined> {
+  public async getAllProducts(): Promise<PaginatedApiResponse<Product>> {
     try {
-      const response = await apiClient.get<ApiResponse<Product[]>>(`${this.baseUrl}/all`);
+      const response = await apiClient.get<PaginatedApiResponse<Product>>(`${this.baseUrl}/all`);
       return response.data;
     } catch (error) {
       handleAnyError(error);
+      throw error;
     }
   }
 
@@ -38,9 +40,9 @@ class ProductService {
    * Fetches products filtered by the user's assigned markets.
    * @param params Optional query parameters for filtering (e.g. category)
    */
-  public async getProducts(params?: any): Promise<ApiResponse<Product[]> | undefined> {
+  public async getProducts(params?: any): Promise<PaginatedApiResponse<Product> | undefined> {
     try {
-      const response = await apiClient.get<ApiResponse<Product[]>>(this.baseUrl, { params });
+      const response = await apiClient.get<PaginatedApiResponse<Product>>(this.baseUrl, { params });
       return response.data;
     } catch (error) {
       handleAnyError(error);
@@ -106,10 +108,11 @@ class ProductService {
   /**
    * Removes a product from the database.
    * @param id Product ID
+   * @param marketId Market ID
    */
-  public async deleteProduct(id: string): Promise<ApiResponse<any> | undefined> {
+  public async deleteProduct(id: string, marketId: string): Promise<ApiResponse<any> | undefined> {
     try {
-      const response = await apiClient.delete<ApiResponse<any>>(`${this.baseUrl}/${id}`);
+      const response = await apiClient.delete<ApiResponse<any>>(`${this.baseUrl}/${id}/${marketId}`);
       toast.success(response.data.message || "Product deleted successfully");
       return response.data;
     } catch (error) {

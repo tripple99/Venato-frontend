@@ -20,6 +20,7 @@ import {
     Search,
 } from "lucide-react";
 import * as React from "react";
+import { type IPaginationMetadata } from "@/model/pagination.model";
 
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
@@ -54,6 +55,10 @@ interface DataTableProps<TData, TValue> {
     pageIndex: number;
     pageSize: number;
   }) => void;
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
+  onSearch?: (search: string) => void;
+  pagination?: IPaginationMetadata | null;
 }
 
 export function DataTable<TData, TValue>({
@@ -66,6 +71,10 @@ export function DataTable<TData, TValue>({
   pageIndex,
   pageSize,
   onPaginationChange,
+  onPageChange,
+  onPageSizeChange,
+  onSearch,
+  pagination: externalPagination,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = React.useState({});
   const [columnVisibility, setColumnVisibility] =
@@ -88,7 +97,12 @@ export function DataTable<TData, TValue>({
       rowSelection,
       columnFilters,
       pagination:
-        pageIndex !== undefined && pageSize !== undefined
+        externalPagination
+          ? {
+              pageIndex: Math.max(0, externalPagination.currentPage - 1),
+              pageSize: externalPagination.limit,
+            }
+          : pageIndex !== undefined && pageSize !== undefined
           ? { pageIndex, pageSize }
           : pagination,
     },
@@ -98,12 +112,23 @@ export function DataTable<TData, TValue>({
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
     onPaginationChange: (updater) => {
+      const nextPagination =
+        typeof updater === "function" ? updater(pagination) : updater;
+
       if (onPaginationChange) {
-        const nextPagination =
-          typeof updater === "function" ? updater(pagination) : updater;
         onPaginationChange(nextPagination);
       } else {
         setPagination(updater);
+      }
+
+      if (onPageChange && nextPagination.pageIndex !== pagination.pageIndex) {
+        onPageChange(nextPagination.pageIndex + 1);
+      }
+      if (
+        onPageSizeChange &&
+        nextPagination.pageSize !== pagination.pageSize
+      ) {
+        onPageSizeChange(nextPagination.pageSize);
       }
     },
     getCoreRowModel: getCoreRowModel(),
@@ -112,12 +137,12 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
-    manualPagination: !!onPaginationChange,
-    pageCount: pageCount,
+    manualPagination: !!onPaginationChange || !!onPageChange,
+    pageCount: externalPagination?.totalPages ?? pageCount,
   });
 
   return (
-    <div className="w-full flex-col justify-start gap-4 flex overflow-hidden">
+    <div className="w-full h-full flex-col justify-start gap-4 flex overflow-hidden">
       <div className="flex items-center justify-between px-4 lg:px-6 pt-4">
         {searchKey && (
           <div className="relative">
@@ -127,9 +152,14 @@ export function DataTable<TData, TValue>({
               value={
                 (table.getColumn(searchKey)?.getFilterValue() as string) ?? ""
               }
-              onChange={(event) =>
-                table.getColumn(searchKey)?.setFilterValue(event.target.value)
-              }
+              onChange={(event) => {
+                const value = event.target.value;
+                if (onSearch) {
+                  onSearch(value);
+                } else {
+                  table.getColumn(searchKey)?.setFilterValue(value);
+                }
+              }}
               className="pl-9 w-full sm:w-[300px]"
             />
           </div>
@@ -138,9 +168,9 @@ export function DataTable<TData, TValue>({
       </div>
 
       <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
-        <div className="overflow-hidden rounded-lg border bg-white dark:bg-slate-900 dark:border-slate-800">
+        <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
           <Table>
-            <TableHeader className="bg-muted dark:bg-slate-800 sticky top-0 z-10 h-8">
+            <TableHeader className="bg-background/50 sticky top-0 z-10">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {

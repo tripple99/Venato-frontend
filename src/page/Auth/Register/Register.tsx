@@ -9,7 +9,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
+
 import { signUpSchema } from "@/pages/auths/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -17,7 +19,7 @@ import toast from "react-hot-toast";
 import { z } from "zod";
 import authService from "@/service/auth.service";
 import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const SignUp1 = signUpSchema
 
@@ -34,9 +36,14 @@ export function SignUpForm() {
     },
   });
 
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
   const onSubmit = async (data: SignUp) => {
+    setLoading(true);
     try {
+      localStorage.setItem("verify-otp-email", data.email);
       const response = await authService.register(data);
+      navigate("/auth/otp");
       form.reset();
       toast.success(response.message);
       // TODO: Handle success - redirect, etc.
@@ -45,11 +52,12 @@ export function SignUpForm() {
       console.error("Registration failed:", error);
 
       // Error toast is already handled by the global error handler
+    } finally {
+      setLoading(false);
     }
   };
 
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
 
   return (
     <Form {...form}>
@@ -111,21 +119,11 @@ export function SignUpForm() {
               <FormItem className="space-y-1">
                 <FormLabel>Password</FormLabel>
                 <FormControl>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? "text" : "password"}
-                      placeholder="********"
-                      {...field}
-                      className="rounded-full h-11 border-slate-200 focus:border-primary-venato transition-colors pr-12"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
+                  <PasswordInput
+                    placeholder="********"
+                    {...field}
+                    className="rounded-full h-11 border-slate-200 focus:border-primary-venato transition-colors"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -140,27 +138,11 @@ export function SignUpForm() {
               <FormItem className="space-y-1">
                 <FormLabel>Confirm Password</FormLabel>
                 <FormControl>
-                  <div className="relative">
-                    <Input
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="********"
-                      {...field}
-                      className="rounded-full h-11 border-slate-200 focus:border-primary-venato transition-colors pr-12"
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setShowConfirmPassword(!showConfirmPassword)
-                      }
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors"
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff size={18} />
-                      ) : (
-                        <Eye size={18} />
-                      )}
-                    </button>
-                  </div>
+                  <PasswordInput
+                    placeholder="********"
+                    {...field}
+                    className="rounded-full h-11 border-slate-200 focus:border-primary-venato transition-colors"
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -171,10 +153,12 @@ export function SignUpForm() {
         {/* Submit */}
         <Button
           type="submit"
-          className="bg-primary-venato text-white w-full rounded-full h-11 font-semibold hover:opacity-90 transition-opacity mt-2"
+          loading={loading}
+          className="bg-primary-venato cursor-pointer text-white w-full rounded-full h-11 font-semibold hover:opacity-90 transition-opacity mt-2"
         >
           Sign Up
         </Button>
+
 
         {/* Divider */}
         <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t py-2">

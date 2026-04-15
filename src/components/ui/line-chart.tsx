@@ -103,9 +103,23 @@ export function ChartLineDotsColors({
               top: 24,
               left: 24,
               right: 24,
+              bottom: 12, // Added bottom margin for breathing room
             }}
           >
-            <CartesianGrid vertical={false} />
+            <defs>
+              <filter id="shadow" height="200%">
+                <feGaussianBlur in="SourceAlpha" stdDeviation="3" />
+                <feOffset dx="0" dy="4" result="offsetblur" />
+                <feComponentTransfer>
+                  <feFuncA type="linear" slope="0.3" />
+                </feComponentTransfer>
+                <feMerge>
+                  <feMergeNode />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.4} />
             <ChartTooltip
               cursor={false}
               content={
@@ -118,9 +132,10 @@ export function ChartLineDotsColors({
             />
             <Line
               dataKey="value"
-              type="natural"
+              type="monotone" // Changed from natural to monotone to prevent undershoot
               stroke="var(--chart-2)"
-              strokeWidth={2}
+              strokeWidth={4}
+              filter="url(#shadow)"
               dot={({ payload, ...props }) => {
                 return (
                   <Dot

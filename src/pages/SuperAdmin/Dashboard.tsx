@@ -51,56 +51,56 @@ export default function SuperAdminDashboard() {
       value: stats?.activeUsers ?? 0,
       description: "Currently active",
       icon: Activity,
-      color: "text-emerald-600",
-      bg: "bg-emerald-50 dark:bg-emerald-950/30",
+      color: "text-emerald-600 dark:text-emerald-400",
+      bg: "bg-emerald-50 dark:bg-emerald-500/10",
     },
     {
       title: "Total Markets",
       value: stats?.marketsCount ?? 0,
       description: "Registered markets",
       icon: Globe,
-      color: "text-blue-600",
-      bg: "bg-blue-50 dark:bg-blue-950/30",
+      color: "text-blue-600 dark:text-blue-400",
+      bg: "bg-blue-50 dark:bg-blue-500/10",
     },
     {
       title: "Active Markets",
       value: stats?.activeMarkets ?? 0,
       description: "Currently operational",
       icon: MapPin,
-      color: "text-amber-600",
-      bg: "bg-amber-50 dark:bg-amber-950/30",
+      color: "text-amber-600 dark:text-amber-400",
+      bg: "bg-amber-50 dark:bg-amber-500/10",
     },
     {
       title: "Total Products",
       value: stats?.productsCount ?? 0,
       description: "Across all markets",
       icon: Package,
-      color: "text-violet-600",
-      bg: "bg-violet-50 dark:bg-violet-950/30",
+      color: "text-violet-600 dark:text-violet-400",
+      bg: "bg-violet-50 dark:bg-violet-500/10",
     },
     {
       title: "Price Snapshots",
       value: stats?.totalSnapshots ?? 0,
       description: "Historical price records",
       icon: Camera,
-      color: "text-cyan-600",
-      bg: "bg-cyan-50 dark:bg-cyan-950/30",
+      color: "text-cyan-600 dark:text-cyan-400",
+      bg: "bg-cyan-50 dark:bg-cyan-500/10",
     },
     {
       title: "Recent Changes",
       value: stats?.recentPriceChanges ?? 0,
       description: "Price updates (last 24h)",
       icon: TrendingUp,
-      color: "text-orange-600",
-      bg: "bg-orange-50 dark:bg-orange-950/30",
+      color: "text-orange-600 dark:text-orange-400",
+      bg: "bg-orange-50 dark:bg-orange-500/10",
     },
     {
       title: "System Status",
       value: "Operational",
       description: "All services running",
       icon: ShieldCheck,
-      color: "text-green-600",
-      bg: "bg-green-50 dark:bg-green-950/30",
+      color: "text-green-600 dark:text-green-400",
+      bg: "bg-green-50 dark:bg-green-500/10",
     },
   ];
 
@@ -226,7 +226,7 @@ export default function SuperAdminDashboard() {
                       </p>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-xs">
+                  <Badge variant="outline" className="text-xs bg-sky-50 text-sky-700 border-sky-100 dark:bg-sky-500/10 dark:text-sky-400 dark:border-sky-500/20 font-bold">
                     {market.currency}
                   </Badge>
                 </div>

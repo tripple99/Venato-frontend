@@ -20,11 +20,12 @@ export type OauthProvider = {
 
   
 export interface IAuth{
+    _id:string,
     fullname:string,
     email:string,
     password:string,
-    userRole:AuthRole,
-    allowedMarkets:AllowedMarkets,
+    userRole:string,
+    allowedMarkets:string[],
     sessionToken:string | null,
     refreshToken:string | null,
     isActive?: boolean;

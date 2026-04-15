@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/ui/spinner";
+// import { Spinner } from "@/components/ui/spinner";
 import {
   InputOTP,
   InputOTPGroup,
@@ -12,7 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import z from "zod";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
-
+import { OtpPurpose } from "@/model/auth.model";
 // 1. Define Zod Schema for OTP (usually 6 digits)
 const otpSchema = z.object({
   otp: z.string().min(6, "OTP must be 6 digits"),
@@ -24,9 +24,9 @@ export default function VerifyOtpPage() {
   const navigate = useNavigate();
 
   // Retrieve phone from localStorage (set in the previous Forgot Password step)
-  const phone =
-    localStorage.getItem("forgot-password-phone") || "your phone number";
-
+  const email =
+    localStorage.getItem("forgot-password-email") || "";
+ const verifyEmail = localStorage.getItem("verify-otp-email") || "";
   // 2. Submit Handler
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -44,13 +44,20 @@ export default function VerifyOtpPage() {
       setIsSubmitting(true);
 
       // We use the phone number from localStorage for verification
-      await authService.verifyOtp({ phoneNumber: phone, otp });
-      localStorage.setItem("otp", otp);
-      toast.success("OTP Verified", {
+      const result = await authService.verifyOtp({ email:verifyEmail ? verifyEmail: email, otp: otp, purpose:verifyEmail? OtpPurpose.Registration: OtpPurpose.RESETPASSWORD });
+     
+      localStorage.setItem("resetToken", result.payload.resetToken);
+      
+   
+      if(verifyEmail){
+        localStorage.removeItem("verify-otp-email");
+        navigate("/auth/login");
+      }else{
+           toast.success("OTP Verified", {
         description: "You can now reset your password.",
       });
-
-      navigate("/auth/reset-password");
+        navigate("/auth/reset-password");
+      }
     } catch (error) {
       toast.error("Verification Failed", {
         description:
@@ -65,8 +72,9 @@ export default function VerifyOtpPage() {
 
   const handleResend = async () => {
     try {
-      toast.info("Resending code...", { description: `Sent to ${phone}` });
-      await authService.sendOtp({ phoneNumber: phone });
+      toast.info("Resending code...", { description: `Sent to ${email}` });
+      await authService.sendOtp({ email:verifyEmail? verifyEmail:email, purpose:verifyEmail? OtpPurpose.Registration: OtpPurpose.RESETPASSWORD });
+      
       toast.success("Code resent successfully!");
     } catch {
       toast.error("Failed to resend code");
@@ -90,7 +98,7 @@ export default function VerifyOtpPage() {
           </h1>
           <p className="text-muted-foreground text-[15px] leading-relaxed">
             We've sent a 6-digit verification code to{" "}
-            <span className="text-foreground font-semibold">{phone}</span>.
+            <span className="text-foreground font-semibold">{email}</span>.
           </p>
         </div>
 
@@ -121,23 +129,18 @@ export default function VerifyOtpPage() {
           <div className="space-y-4 pt-4">
             <Button
               type="submit"
-              className="w-full rounded-2xl h-14 bg-[#111827] dark:bg-gray-100 text-white dark:text-[#111827] hover:bg-gray-800 dark:hover:bg-gray-200 font-bold text-base transition-all shadow-xl shadow-primary/10 active:scale-[0.98] disabled:opacity-70"
-              disabled={isSubmitting || otp.length < 6}
+              className="w-full rounded-2xl cursor-pointer h-14 bg-primary-venato text-white dark:text-[#111827] hover:bg-primary/80 dark:hover:bg-gray-200 font-bold text-base transition-all shadow-xl shadow-primary/10 active:scale-[0.98] disabled:opacity-70"
+              disabled={otp.length < 6}
+              loading={isSubmitting}
+              loadingText="Verifying..."
             >
-              {isSubmitting ? (
-                <div className="flex items-center justify-center gap-3">
-                  <Spinner className="h-5 w-5 border-2 text-current" />
-                  <span>Verifying...</span>
-                </div>
-              ) : (
-                "Verify Code"
-              )}
+              Verify Code
             </Button>
 
             <Button
               type="button"
               variant="ghost"
-              className="w-full rounded-2xl h-14 text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-all flex items-center justify-center gap-2 font-medium"
+              className="w-full rounded-2xl h-14 cursor-pointer text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-all flex items-center justify-center gap-2 font-medium"
               onClick={() => navigate("/auth/forgot-password")}
               disabled={isSubmitting}
             >
@@ -152,7 +155,7 @@ export default function VerifyOtpPage() {
           <button
             type="button"
             onClick={handleResend}
-            className="text-primary hover:text-primary/80 font-bold decoration-2 underline-offset-4 ml-1 transition-colors"
+            className="text-primary cursor-pointer hover:text-primary/80 font-bold decoration-2 underline-offset-4 ml-1 transition-colors"
           >
             Resend Code
           </button>

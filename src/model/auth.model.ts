@@ -22,3 +22,10 @@ export enum AllowedMarkets{
     Ajiwa = "Ajiwa",
     Dawanau = "Dawanau",
 }
+
+
+export enum OtpPurpose {
+  VERIFICATION = "verification",
+  RESETPASSWORD = "reset-password",
+  Registration = "registeration",
+}

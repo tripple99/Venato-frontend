@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
@@ -40,124 +40,120 @@ import {
 } from "lucide-react";
 import { createAccessColumns } from "./columns/access-columns";
 import type { IProfile } from "@/model/user.model";
-import { AuthRole, AllowedMarkets } from "@/model/auth.model";
-import accessService from "@/service/access.service";
-import accessControlService from "@/service/access-control.service";
-import { toast } from "sonner";
+import { AuthRole } from "@/model/auth.model";
+import { useAccessControlHook } from "./columns/super-admin-hooks";
+import type { IAuth } from "@/types/auth.types";
 
 // Mock data for development
-const mockUsers: IProfile[] = [
-  {
-    uid: "u001",
-    fullname: "Ahmad Musa",
-    email: "ahmad@venato.ng",
-    password: "",
-    userRole: { User: "user", Admin: "admin", superAdmin: "superadmin" },
-    allowedMarkets: { Default: "", Charanchi: "Charanchi", Ajiwa: "Ajiwa", Dawanau: "Dawanau" },
-    sessionToken: null,
-    refreshToken: null,
-    provider: { Google: "google", Twitter: "twitter", Facebook: "facebook" },
-    roles: AuthRole.Admin,
-    userMarket: ["Charanci"],
-    isActive: true,
-    lastActive: new Date("2025-12-15T14:30:00"),
-  },
-  {
-    uid: "u002",
-    fullname: "Fatima Yusuf",
-    email: "fatima@venato.ng",
-    password: "",
-    userRole: { User: "user", Admin: "admin", superAdmin: "superadmin" },
-    allowedMarkets: { Default: "", Charanchi: "Charanchi", Ajiwa: "Ajiwa", Dawanau: "Dawanau" },
-    sessionToken: null,
-    refreshToken: null,
-    provider: { Google: "google", Twitter: "twitter", Facebook: "facebook" },
-    roles: AuthRole.Admin,
-    userMarket: ["Ajiwa", "Dawanau"],
-    isActive: true,
-    lastActive: new Date("2025-12-14T10:00:00"),
-  },
-  {
-    uid: "u003",
-    fullname: "Ibrahim Sani",
-    email: "ibrahim@venato.ng",
-    password: "",
-    userRole: { User: "user", Admin: "admin", superAdmin: "superadmin" },
-    allowedMarkets: { Default: "", Charanchi: "Charanchi", Ajiwa: "Ajiwa", Dawanau: "Dawanau" },
-    sessionToken: null,
-    refreshToken: null,
-    provider: { Google: "google", Twitter: "twitter", Facebook: "facebook" },
-    roles: AuthRole.User,
-    userMarket: [],
-    isActive: true,
-    lastActive: new Date("2025-12-13T08:45:00"),
-  },
-  {
-    uid: "u004",
-    fullname: "Amina Bello",
-    email: "amina@venato.ng",
-    password: "",
-    userRole: { User: "user", Admin: "admin", superAdmin: "superadmin" },
-    allowedMarkets: { Default: "", Charanchi: "Charanchi", Ajiwa: "Ajiwa", Dawanau: "Dawanau" },
-    sessionToken: null,
-    refreshToken: null,
-    provider: { Google: "google", Twitter: "twitter", Facebook: "facebook" },
-    roles: AuthRole.User,
-    userMarket: [],
-    isActive: false,
-    lastActive: new Date("2025-11-28T12:00:00"),
-  },
-];
+// const mockUsers: IProfile[] = [
+//   {
+//     uid: "u001",
+//     fullname: "Ahmad Musa",
+//     email: "ahmad@venato.ng",
+//     password: "",
+//     userRole: { User: "user", Admin: "admin", superAdmin: "superadmin" },
+//     allowedMarkets: { Default: "", Charanchi: "Charanchi", Ajiwa: "Ajiwa", Dawanau: "Dawanau" },
+//     sessionToken: null,
+//     refreshToken: null,
+//     provider: { Google: "google", Twitter: "twitter", Facebook: "facebook" },
+//     roles: AuthRole.Admin,
+//     userMarket: ["Charanci"],
+//     isActive: true,
+//     lastActive: new Date("2025-12-15T14:30:00"),
+//   },
+//   {
+//     uid: "u002",
+//     fullname: "Fatima Yusuf",
+//     email: "fatima@venato.ng",
+//     password: "",
+//     userRole: { User: "user", Admin: "admin", superAdmin: "superadmin" },
+//     allowedMarkets: { Default: "", Charanchi: "Charanchi", Ajiwa: "Ajiwa", Dawanau: "Dawanau" },
+//     sessionToken: null,
+//     refreshToken: null,
+//     provider: { Google: "google", Twitter: "twitter", Facebook: "facebook" },
+//     roles: AuthRole.Admin,
+//     userMarket: ["Ajiwa", "Dawanau"],
+//     isActive: true,
+//     lastActive: new Date("2025-12-14T10:00:00"),
+//   },
+//   {
+//     uid: "u003",
+//     fullname: "Ibrahim Sani",
+//     email: "ibrahim@venato.ng",
+//     password: "",
+//     userRole: { User: "user", Admin: "admin", superAdmin: "superadmin" },
+//     allowedMarkets: { Default: "", Charanchi: "Charanchi", Ajiwa: "Ajiwa", Dawanau: "Dawanau" },
+//     sessionToken: null,
+//     refreshToken: null,
+//     provider: { Google: "google", Twitter: "twitter", Facebook: "facebook" },
+//     roles: AuthRole.User,
+//     userMarket: [],
+//     isActive: true,
+//     lastActive: new Date("2025-12-13T08:45:00"),
+//   },
+//   {
+//     uid: "u004",
+//     fullname: "Amina Bello",
+//     email: "amina@venato.ng",
+//     password: "",
+//     userRole: { User: "user", Admin: "admin", superAdmin: "superadmin" },
+//     allowedMarkets: { Default: "", Charanchi: "Charanchi", Ajiwa: "Ajiwa", Dawanau: "Dawanau" },
+//     sessionToken: null,
+//     refreshToken: null,
+//     provider: { Google: "google", Twitter: "twitter", Facebook: "facebook" },
+//     roles: AuthRole.User,
+//     userMarket: [],
+//     isActive: false,
+//     lastActive: new Date("2025-11-28T12:00:00"),
+//   },
+// ];
 
 export default function AccessControl() {
-  const [users, setUsers] = useState<IProfile[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedUser, setSelectedUser] = useState<IProfile | null>(null);
+  const {
+    users,
+    isLoading,
+    pagination,
+    setPagination,
+    fetchUsers,
+    fetchAllMarkets,
+    grantRoleAccess,
+    grantMarketAccess,
+    revokeAccess,
+    markets,
+    marketPagination,
+    loadMoreMarkets,
+  } = useAccessControlHook();
+
+  const [selectedUser, setSelectedUser] = useState<IAuth | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [grantOpen, setGrantOpen] = useState(false);
   const [revokeOpen, setRevokeOpen] = useState(false);
-  const [userToRevoke, setUserToRevoke] = useState<IProfile | null>(null);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    totalCount: 0,
-    totalPages: 1,
-    hasNextPage: false,
-    hasPreviousPage: false,
-  });
+  const [userToRevoke, setUserToRevoke] = useState<IAuth | null>(null);
 
   // Grant form state
   const [grantRole, setGrantRole] = useState<AuthRole>(AuthRole.User);
   const [grantMarket, setGrantMarket] = useState<string>("");
   const [grantType, setGrantType] = useState<"role" | "market">("role");
 
-  const fetchUsers = async (page = 1, limit = 20) => {
-    setIsLoading(true);
-    try {
-      const response = await accessControlService.getAccessControl(page, limit);
-      if (response?.payload && Array.isArray(response.payload.data)) {
-        setUsers(response.payload.data);
-        setPagination({
-          page: response.payload.currentPage,
-          limit: response.payload.limit,
-          totalCount: response.payload.totalCount,
-          totalPages: response.payload.totalPages,
-          hasNextPage: response.payload.hasNextPage,
-          hasPreviousPage: response.payload.hasPreviousPage,
-        });
-      } else {
-        setUsers(mockUsers);
-      }
-    } catch {
-      setUsers(mockUsers);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
     fetchUsers(pagination.page, pagination.limit);
-  }, [pagination.page, pagination.limit]);
+  }, [pagination.page, pagination.limit, fetchUsers]);
+
+  useEffect(() => {
+    fetchAllMarkets(1);
+  }, [fetchAllMarkets]);
+
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastMarketElementRef = useCallback((node: HTMLDivElement) => {
+    if (marketPagination.isLoading) return;
+    if (observer.current) observer.current.disconnect();
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && marketPagination.hasNextPage) {
+        loadMoreMarkets();
+      }
+    });
+    if (node) observer.current.observe(node);
+  }, [marketPagination.isLoading, marketPagination.hasNextPage, loadMoreMarkets]);
 
   const handleView = (user: IProfile) => {
     setSelectedUser(user);
@@ -178,41 +174,15 @@ export default function AccessControl() {
 
   const handleGrantSubmit = async () => {
     if (!selectedUser) return;
-    try {
-      if (grantType === "role") {
-        await accessService.grantUserRole(selectedUser.uid, grantRole);
-        setUsers((prev) =>
-          prev.map((u) => (u.uid === selectedUser.uid ? { ...u, roles: grantRole } : u))
-        );
-        toast.success(`Role updated to ${grantRole}`);
-      } else if (grantMarket) {
-        await accessService.grantMarketAccess(selectedUser.uid, grantMarket);
-        setUsers((prev) =>
-          prev.map((u) =>
-            u.uid === selectedUser.uid
-              ? { ...u, userMarket: [...(u.userMarket || []), grantMarket] }
-              : u
-          )
-        );
-        toast.success(`Market access granted: ${grantMarket}`);
-      }
-    } catch {
-      if (grantType === "role") {
-        setUsers((prev) =>
-          prev.map((u) => (u.uid === selectedUser.uid ? { ...u, roles: grantRole } : u))
-        );
-        toast.success(`Role updated to ${grantRole}`);
-      } else if (grantMarket) {
-        setUsers((prev) =>
-          prev.map((u) =>
-            u.uid === selectedUser.uid
-              ? { ...u, userMarket: [...(u.userMarket || []), grantMarket] }
-              : u
-          )
-        );
-        toast.success(`Market access granted: ${grantMarket}`);
-      }
-    } finally {
+    
+    let result = { success: false };
+    if (grantType === "role") {
+      result = await grantRoleAccess(selectedUser._id, grantRole);
+    } else if (grantMarket) {
+      result = await grantMarketAccess(selectedUser._id, grantMarket);
+    }
+
+    if (result.success) {
       setGrantOpen(false);
       setGrantMarket("");
     }
@@ -220,33 +190,10 @@ export default function AccessControl() {
 
   const handleRevokeConfirm = async () => {
     if (!userToRevoke) return;
-    try {
-      await accessService.revokeUserAccess(
-        userToRevoke.uid,
-        userToRevoke.userMarket?.[0] || "",
-        {
-          userRole: AuthRole.User,
-          allowedMarkets: AllowedMarkets.Default,
-        }
-      );
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.uid === userToRevoke.uid
-            ? { ...u, roles: AuthRole.User, userMarket: [] }
-            : u
-        )
-      );
-      toast.success("User access revoked");
-    } catch {
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.uid === userToRevoke.uid
-            ? { ...u, roles: AuthRole.User, userMarket: [] }
-            : u
-        )
-      );
-      toast.success("User access revoked");
-    } finally {
+    
+    const { success } = await revokeAccess(userToRevoke._id);
+    
+    if (success) {
       setRevokeOpen(false);
       setUserToRevoke(null);
     }
@@ -366,15 +313,15 @@ export default function AccessControl() {
                   <p className="text-sm text-muted-foreground">Role</p>
                   <Badge
                     variant={
-                      selectedUser.roles === AuthRole.superAdmin
+                      selectedUser.userRole === AuthRole.superAdmin
                         ? "default"
-                        : selectedUser.roles === AuthRole.Admin
+                        : selectedUser.userRole === AuthRole.Admin
                         ? "warning"
                         : "secondary"
                     }
                     className="capitalize"
                   >
-                    {selectedUser.roles || "user"}
+                    {selectedUser.userRole || "user"}
                   </Badge>
                 </div>
                 <div className="p-3 rounded-lg border space-y-1">
@@ -390,8 +337,8 @@ export default function AccessControl() {
                   <MapPin className="h-3.5 w-3.5" /> Allowed Markets
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {selectedUser.userMarket && selectedUser.userMarket.length > 0 ? (
-                    selectedUser.userMarket.map((market) => (
+                  {selectedUser.allowedMarkets && selectedUser.allowedMarkets.length > 0 ? (
+                    selectedUser.allowedMarkets.map((market) => (
                       <Badge key={market} variant="outline">
                         {market}
                       </Badge>
@@ -482,13 +429,17 @@ export default function AccessControl() {
                     <SelectValue placeholder="Choose a market" />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.values(AllowedMarkets)
-                      .filter((m) => m !== "")
-                      .map((market) => (
-                        <SelectItem key={market} value={market}>
-                          {market}
-                        </SelectItem>
-                      ))}
+                    {markets.map((market) => (
+                      <SelectItem key={market._id} value={market._id}>
+                        {market.name}
+                      </SelectItem>
+                    ))}
+                    {marketPagination.hasNextPage && (
+                      <div ref={lastMarketElementRef} className="h-4" />
+                    )}
+                    {marketPagination.isLoading && (
+                      <div className="p-2 text-sm text-center text-muted-foreground">Loading more...</div>
+                    )}
                   </SelectContent>
                 </Select>
               </div>

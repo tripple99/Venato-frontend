@@ -1,10 +1,10 @@
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/ui/spinner";
+// import { Spinner } from "@/components/ui/spinner";
 import authService from "@/service/auth.service";
 // import { useSettingsStore } from "@/store/useSetting";
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -12,7 +12,8 @@ import { Input } from "@/components/ui/input";
 import z from "zod";
 
 const forgotPasswordSchema = z.object({
-  email: z.email().min(1,"Email is required")
+  email: z.email().min(1,"Email is required"),
+
 });
 
 export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
@@ -48,11 +49,13 @@ export default function ForgotPasswordPage() {
     try {
       setIsSubmitting(true);
 
-      const response = await authService.sendOtp({ phoneNumber: formValues.email });
+      const response = await authService.forgotPassword(formValues.email);
 
-      localStorage.setItem("forgot-password-phone", formValues.email);
-      localStorage.setItem("forgot-password-token", response.data.accessToken);
-      navigate("/auth/otp");
+      localStorage.setItem("forgot-password-email", formValues.email);
+      // localStorage.setItem("forgot-password-token", response.data.accessToken);
+      if(response.status){
+        navigate("/auth/otp");
+      }
 
     } catch (error: any) {
       toast.error("Server Error", {
@@ -103,27 +106,21 @@ export default function ForgotPasswordPage() {
           <div className="space-y-4">
             <Button
               type="submit"
-              className="w-full rounded-full h-11"
-              disabled={isSubmitting}
+              className="w-full rounded-full h-11 bg-primary-venato text-white font-semibold "
+              loading={isSubmitting}
+              loadingText="Requesting Code..."
             >
-              {isSubmitting ? (
-                <div className="flex items-center justify-center gap-2">
-                  <Spinner className="h-4 w-4" />
-                  <span>Requesting Code...</span>
-                </div>
-              ) : (
-                "Send Verification Code"
-              )}
+              Send Verification Code
             </Button>
 
             <Button
               type="button"
               variant="outline"
-              className="w-full rounded-full h-11"
+              className="w-full rounded-full h-11 "
               onClick={() => navigate("/auth/login")}
               disabled={isSubmitting}
             >
-              Back to Login
+              <ArrowLeft className="w-4 h-4" /> Back to Login
             </Button>
           </div>
         </div>

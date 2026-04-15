@@ -3,7 +3,7 @@ import type { Products } from "@/types/products";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, Pencil, Trash2 } from "lucide-react";
-
+import type { IMarketData } from "@/model/market.model";
 const formatPrice = (price: number) =>
   new Intl.NumberFormat("en-NG", {
     style: "currency",
@@ -74,7 +74,7 @@ export const createProductColumns = (
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 hover:text-primary-venato"
+          className="h-8 w-8 hover:text-primary-venato cursor-pointer"
           onClick={() => onView(row.original)}
         >
           <Eye className="h-4 w-4" />
@@ -82,7 +82,7 @@ export const createProductColumns = (
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 hover:text-blue-600"
+          className="h-8 w-8 hover:text-blue-600 cursor-pointer"
           onClick={() => onEdit(row.original)}
         >
           <Pencil className="h-4 w-4" />
@@ -90,7 +90,7 @@ export const createProductColumns = (
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 hover:text-red-600 text-red-500"
+          className="h-8 w-8 hover:text-red-600 text-red-500 cursor-pointer"
           onClick={() => onDelete(row.original)}
         >
           <Trash2 className="h-4 w-4" />

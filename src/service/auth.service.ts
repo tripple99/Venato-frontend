@@ -7,22 +7,24 @@ import type {Login, SignUp} from "@/model/auth.model";
 import userService from "./user.service";
 import { useAuthStore } from "@/store/authStore";
 import type { IProfile } from "@/model/user.model";
-
+import { OtpPurpose } from "@/model/auth.model";
 
 interface ApiResponse<T> {
   status: string;
   statusCode: number;
   message: string;
-  data: T;
+  payload: T;
 }
 
 interface OtpPayload {
-  phoneNumber: string;
+  email: string;
+  purpose: OtpPurpose;
 }
 
 interface VerifyOtpPayload {
-  phoneNumber: string;
+  email: string;
   otp: string;
+  purpose: OtpPurpose;
 }
 
 // interface SendMagicLinkPayload {
@@ -67,12 +69,12 @@ class AuthService {
   }
 
   public async forgotPassword(
-    phone: string,
+    email: string,
   ): Promise<ApiResponse<{ resetToken: string }>> {
     try {
       const response = await apiClient.post<
         ApiResponse<{ resetToken: string }>
-      >(`${this.baseApiUrl}/forgot-password`, {phone:phone});
+      >(`${this.baseApiUrl}/forgot-password`, {email});
       toast.success(response.data.message);
       return response.data;
     } catch (error: any) {
@@ -97,10 +99,10 @@ class AuthService {
   public async resetPassword(payload: {
     password: string;
     confirmPassword: string;
-    token: string;
+    resetToken: string;
   }): Promise<ApiResponse<{ accessToken: string; refreshToken: string }>> {
     try {
-      const response = await apiClient.post<
+      const response = await apiClient.patch<
         ApiResponse<{ accessToken: string; refreshToken: string }>
       >(`${this.baseApiUrl}/reset-password`, payload);
       toast.success(response.data.message);
@@ -117,7 +119,7 @@ class AuthService {
     try {
       const response = await apiClient.post<
         ApiResponse<{ accessToken: string; refreshToken: string }>
-      >(`${this.baseApiUrl}/send-otp`, otpPayload);
+      >(`${this.baseApiUrl}/resend-otp`, otpPayload);
       toast.success(response.data.message);
       return response.data;
     } catch (error: any) {
@@ -128,11 +130,11 @@ class AuthService {
 
   public async verifyOtp(
     verifyOtpPayload: VerifyOtpPayload,
-  ): Promise<ApiResponse<{ accessToken: string; refreshToken: string }>> {
+  ): Promise<ApiResponse<{ resetToken: string }>> {
     try {
       const response = await apiClient.post<
-        ApiResponse<{ accessToken: string; refreshToken: string }>
-      >(`${this.baseApiUrl}/verify-otp`, verifyOtpPayload);
+        ApiResponse<{ resetToken: string }>
+      >(`${this.baseApiUrl}/validate-Otp`, verifyOtpPayload);
       toast.success(response.data.message);
       return response.data;
     } catch (error: any) {

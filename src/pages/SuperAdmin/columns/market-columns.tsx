@@ -3,6 +3,7 @@ import type { IMarketData } from "@/model/market.model";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, Pencil, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export const createMarketColumns = (
   onView: (market: IMarketData) => void,
@@ -20,7 +21,9 @@ export const createMarketColumns = (
     accessorKey: "currency",
     header: "Currency",
     cell: ({ row }) => (
-      <Badge variant="outline">{row.getValue("currency")}</Badge>
+      <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-100 dark:bg-sky-500/10 dark:text-sky-400 dark:border-sky-500/20 font-bold px-2 py-0">
+        {row.getValue("currency")}
+      </Badge>
     ),
   },
   {
@@ -28,7 +31,7 @@ export const createMarketColumns = (
     header: "State",
     accessorFn: (row) => row.location?.state || "N/A",
     cell: ({ row }) => (
-      <span>{row.original.location?.state || "N/A"}</span>
+      <span className="text-[13px] font-medium text-foreground/80">{row.original.location?.state || "N/A"}</span>
     ),
   },
   {
@@ -36,7 +39,7 @@ export const createMarketColumns = (
     header: "LGA",
     accessorFn: (row) => row.location?.LGA || "N/A",
     cell: ({ row }) => (
-      <span className="text-muted-foreground">{row.original.location?.LGA || "N/A"}</span>
+      <span className="text-muted-foreground/70 text-[12px] italic">{row.original.location?.LGA || "N/A"}</span>
     ),
   },
   {
@@ -44,7 +47,7 @@ export const createMarketColumns = (
     header: "Country",
     accessorFn: (row) => row.location?.country || "N/A",
     cell: ({ row }) => (
-      <span>{row.original.location?.country || "N/A"}</span>
+      <span className="text-[13px] text-foreground/80">{row.original.location?.country || "N/A"}</span>
     ),
   },
   {
@@ -53,7 +56,19 @@ export const createMarketColumns = (
     cell: ({ row }) => {
       const isActive = row.getValue("isActive") as boolean;
       return (
-        <Badge variant={isActive ? "success" : "destructive"}>
+        <Badge 
+          variant="outline" 
+          className={cn(
+            "font-medium border-0 px-3 py-1",
+            isActive 
+              ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400" 
+              : "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400"
+          )}
+        >
+          <div className={cn(
+            "h-1.5 w-1.5 rounded-full mr-2",
+            isActive ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]"
+          )} />
           {isActive ? "Active" : "Inactive"}
         </Badge>
       );

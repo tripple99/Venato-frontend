@@ -34,111 +34,114 @@ import { createProductColumns } from "./columns/product-columns";
 import { type Products } from "@/types/products";
 import { IUnit, ICategory, MarketNames } from "@/types/market.types";
 import ProductView from "@/components/ui/prodcutView";
+import { useProductHook } from "./admin-hooks";
 import { toast } from "sonner";
+import { useAuthStore } from "@/store/authStore";
+import type { IMarketProduct } from "@/types/market.types";
 
 // Mock data
-const mockProducts: Products[] = [
-  {
-    id: "p001",
-    name: "Rice",
-    price: 25000,
-    unit: IUnit.TIYA,
-    category: ICategory.Grains,
-    market: MarketNames.Charanci,
-    created_at: new Date("2025-12-01T10:00:00"),
-    update_at: new Date("2025-12-01T10:00:00"),
-  },
-  {
-    id: "p002",
-    name: "Beans",
-    price: 20000,
-    unit: IUnit.TIYA,
-    category: ICategory.LegumesAndNuts,
-    market: MarketNames.Ajiwa,
-    created_at: new Date("2025-12-02T09:30:00"),
-    update_at: new Date("2025-12-02T09:30:00"),
-  },
-  {
-    id: "p003",
-    name: "Tomatoes",
-    price: 5000,
-    unit: IUnit.MUDU,
-    category: ICategory.Vegetables,
-    market: MarketNames.Charanci,
-    created_at: new Date("2025-12-03T11:15:00"),
-    update_at: new Date("2025-12-03T11:15:00"),
-  },
-  {
-    id: "p004",
-    name: "Onions",
-    price: 4500,
-    unit: IUnit.MUDU,
-    category: ICategory.Vegetables,
-    market: MarketNames.Dawanau,
-    created_at: new Date("2025-12-04T08:45:00"),
-    update_at: new Date("2025-12-04T08:45:00"),
-  },
-  {
-    id: "p005",
-    name: "Palm Oil",
-    price: 1500,
-    unit: IUnit.LITRE,
-    category: ICategory.OilsAndSeeds,
-    market: MarketNames.Ajiwa,
-    created_at: new Date("2025-12-05T10:30:00"),
-    update_at: new Date("2025-12-05T10:30:00"),
-  },
-  {
-    id: "p006",
-    name: "Vegetable Oil",
-    price: 1200,
-    unit: IUnit.LITRE,
-    category: ICategory.OilsAndSeeds,
-    market: MarketNames.Dawanau,
-    created_at: new Date("2025-12-06T14:00:00"),
-    update_at: new Date("2025-12-06T14:00:00"),
-  },
-  {
-    id: "p007",
-    name: "Sugar",
-    price: 7000,
-    unit: IUnit.TIYA,
-    category: ICategory.Grains,
-    market: MarketNames.Charanci,
-    created_at: new Date("2025-12-07T12:20:00"),
-    update_at: new Date("2025-12-07T12:20:00"),
-  },
-  {
-    id: "p008",
-    name: "Yam",
-    price: 8000,
-    unit: IUnit.TIYA,
-    category: ICategory.RootsAndTubers,
-    market: MarketNames.Ajiwa,
-    created_at: new Date("2025-12-08T09:50:00"),
-    update_at: new Date("2025-12-08T09:50:00"),
-  },
-  {
-    id: "p009",
-    name: "Mango",
-    price: 4000,
-    unit: IUnit.MUDU,
-    category: ICategory.Fruits,
-    market: MarketNames.Dawanau,
-    created_at: new Date("2025-12-09T11:10:00"),
-    update_at: new Date("2025-12-09T11:10:00"),
-  },
-  {
-    id: "p010",
-    name: "Groundnuts",
-    price: 3000,
-    unit: IUnit.TIYA,
-    category: ICategory.LegumesAndNuts,
-    market: MarketNames.Charanci,
-    created_at: new Date("2025-12-10T10:05:00"),
-    update_at: new Date("2025-12-10T10:05:00"),
-  },
-];
+// const mockProducts: Products[] = [
+//   {
+//     id: "p001",
+//     name: "Rice",
+//     price: 25000,
+//     unit: IUnit.TIYA,
+//     category: ICategory.Grains,
+//     market: MarketNames.Charanci,
+//     created_at: new Date("2025-12-01T10:00:00"),
+//     update_at: new Date("2025-12-01T10:00:00"),
+//   },
+//   {
+//     id: "p002",
+//     name: "Beans",
+//     price: 20000,
+//     unit: IUnit.TIYA,
+//     category: ICategory.LegumesAndNuts,
+//     market: MarketNames.Ajiwa,
+//     created_at: new Date("2025-12-02T09:30:00"),
+//     update_at: new Date("2025-12-02T09:30:00"),
+//   },
+//   {
+//     id: "p003",
+//     name: "Tomatoes",
+//     price: 5000,
+//     unit: IUnit.MUDU,
+//     category: ICategory.Vegetables,
+//     market: MarketNames.Charanci,
+//     created_at: new Date("2025-12-03T11:15:00"),
+//     update_at: new Date("2025-12-03T11:15:00"),
+//   },
+//   {
+//     id: "p004",
+//     name: "Onions",
+//     price: 4500,
+//     unit: IUnit.MUDU,
+//     category: ICategory.Vegetables,
+//     market: MarketNames.Dawanau,
+//     created_at: new Date("2025-12-04T08:45:00"),
+//     update_at: new Date("2025-12-04T08:45:00"),
+//   },
+//   {
+//     id: "p005",
+//     name: "Palm Oil",
+//     price: 1500,
+//     unit: IUnit.LITRE,
+//     category: ICategory.OilsAndSeeds,
+//     market: MarketNames.Ajiwa,
+//     created_at: new Date("2025-12-05T10:30:00"),
+//     update_at: new Date("2025-12-05T10:30:00"),
+//   },
+//   {
+//     id: "p006",
+//     name: "Vegetable Oil",
+//     price: 1200,
+//     unit: IUnit.LITRE,
+//     category: ICategory.OilsAndSeeds,
+//     market: MarketNames.Dawanau,
+//     created_at: new Date("2025-12-06T14:00:00"),
+//     update_at: new Date("2025-12-06T14:00:00"),
+//   },
+//   {
+//     id: "p007",
+//     name: "Sugar",
+//     price: 7000,
+//     unit: IUnit.TIYA,
+//     category: ICategory.Grains,
+//     market: MarketNames.Charanci,
+//     created_at: new Date("2025-12-07T12:20:00"),
+//     update_at: new Date("2025-12-07T12:20:00"),
+//   },
+//   {
+//     id: "p008",
+//     name: "Yam",
+//     price: 8000,
+//     unit: IUnit.TIYA,
+//     category: ICategory.RootsAndTubers,
+//     market: MarketNames.Ajiwa,
+//     created_at: new Date("2025-12-08T09:50:00"),
+//     update_at: new Date("2025-12-08T09:50:00"),
+//   },
+//   {
+//     id: "p009",
+//     name: "Mango",
+//     price: 4000,
+//     unit: IUnit.MUDU,
+//     category: ICategory.Fruits,
+//     market: MarketNames.Dawanau,
+//     created_at: new Date("2025-12-09T11:10:00"),
+//     update_at: new Date("2025-12-09T11:10:00"),
+//   },
+//   {
+//     id: "p010",
+//     name: "Groundnuts",
+//     price: 3000,
+//     unit: IUnit.TIYA,
+//     category: ICategory.LegumesAndNuts,
+//     market: MarketNames.Charanci,
+//     created_at: new Date("2025-12-10T10:05:00"),
+//     update_at: new Date("2025-12-10T10:05:00"),
+//   },
+// ];
 
 const formatPrice = (price: number) =>
   new Intl.NumberFormat("en-NG", {
@@ -147,25 +150,45 @@ const formatPrice = (price: number) =>
     minimumFractionDigits: 0,
   }).format(price);
 
+const initialProductState: Products = {
+  _id: "",
+  name: "",
+  price: 0,
+  unit: IUnit.TIYA,
+  category: ICategory.Grains,
+  market: {
+    name: MarketNames.Charanci,
+    _id: "",
+    location: {
+      state: "",
+      code: "",
+      LGA: "",
+      cordinates: { longitude: "", latitude: "" }
+    }
+  },
+  created_at: new Date(),
+  update_at: new Date(),
+};
+
 export default function Product() {
-  const [products, setProducts] = useState<Products[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [selectedProduct, setSelectedProduct] = useState<Products | null>(null);
+  const { user } = useAuthStore();
+  const { products, isLoading, markets, pagination, getProducts, createProduct, updateProducts, deleteProduct, fetchUserMarkets } = useProductHook();
+
   const [viewOpen, setViewOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Products | null>(null);
   const [productViewOpen, setProductViewOpen] = useState(false);
   const [editView, setEditView] = useState(false);
   const [editProduct, setEditProduct] = useState<Products | null>(null);
-
+  const [formProduct, setFormProduct] = useState<Products>(initialProductState);
+  const [selectedProduct, setSelectedProduct] = useState<Products | null>(null);
   useEffect(() => {
-    setIsLoading(true);
-    // Use mock data – replace with service call when backend is ready
-    setTimeout(() => {
-      setProducts(mockProducts);
-      setIsLoading(false);
-    }, 500);
-  }, []);
+    if (user?.userMarket && user.userMarket.length > 0) {
+      fetchUserMarkets(user.userMarket);
+    }
+  }, [user, fetchUserMarkets]);
+
+
 
   const handleView = (product: Products) => {
     setSelectedProduct(product);
@@ -174,6 +197,7 @@ export default function Product() {
 
   const handleEdit = (product: Products) => {
     setEditProduct(product);
+    setFormProduct(product);
     setEditView(true);
     setProductViewOpen(true);
   };
@@ -183,17 +207,20 @@ export default function Product() {
     setDeleteOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!productToDelete) return;
-    setProducts((prev) => prev.filter((p) => p.id !== productToDelete.id));
-    toast.success("Product deleted successfully");
-    setDeleteOpen(false);
-    setProductToDelete(null);
+    console.log(productToDelete);
+    const { success } = await deleteProduct(productToDelete._id, productToDelete.market._id);
+    if (success) {
+      setDeleteOpen(false);
+      setProductToDelete(null);
+    }
   };
 
   const handleAddProduct = () => {
     setEditView(false);
     setEditProduct(null);
+    setFormProduct(initialProductState);
     setProductViewOpen(true);
   };
 
@@ -203,7 +230,7 @@ export default function Product() {
   );
 
   return (
-    <div className="p-4 lg:p-6 space-y-6 animate-in fade-in duration-500">
+    <div className="p-4 lg:p-6 space-y-6 animate-in  fade-in duration-500">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="space-y-1">
@@ -227,7 +254,7 @@ export default function Product() {
         <CardHeader>
           <CardTitle className="text-xl font-semibold">Products</CardTitle>
           <CardDescription>
-            {products.length} product{products.length !== 1 ? "s" : ""} in the system
+            {products?.length} product{products?.length !== 1 ? "s" : ""} in the system
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -236,6 +263,13 @@ export default function Product() {
             data={products}
             searchKey="name"
             isLoading={isLoading}
+            pagination={pagination}
+            onPageChange={(page:number) => getProducts(page, pagination.limit)}
+            onPageSizeChange={(pageSize:number) => getProducts(1, pageSize)}
+            pageSize={pagination.limit}
+            pageCount={pagination.totalPages}
+            onSearch={(search:string) => getProducts(1, 10, search)}
+            pageIndex={pagination.currentPage}
           />
         </CardContent>
       </Card>
@@ -291,7 +325,7 @@ export default function Product() {
                   <MapPin className="h-5 w-5 text-primary-venato" />
                   <div>
                     <p className="text-sm text-muted-foreground">Market</p>
-                    <p className="font-semibold">{selectedProduct.market}</p>
+                    <p className="font-semibold">{selectedProduct.market.name}</p>
                   </div>
                 </div>
               </div>
@@ -339,19 +373,44 @@ export default function Product() {
       {/* Add/Edit Product View */}
       {productViewOpen && (
         <ProductView
+          productVal={formProduct}
+          markets={markets}
           onclose={() => {
             setProductViewOpen(false);
             setEditView(false);
             setEditProduct(null);
           }}
-          addProductVal={(product) => setProducts((prev) => [...prev, product])}
+          addProductVal={async (product) => {
+            console.log(product);
+            const marketProduct: IMarketProduct = {
+              name: product.name,
+              unit: product.unit,
+              price: product.price,
+              category: product.category,
+              marketId: product.market._id,
+            };
+            const { success } = await createProduct(marketProduct);
+            if (success) {
+              setProductViewOpen(false);
+            }
+          }}
           editView={editView}
           editProduct={editProduct}
-          updateProductVal={(product) =>
-            setProducts((prev) =>
-              prev.map((p) => (p.id === product.id ? { ...p, ...product } : p))
-            )
-          }
+          updateProductVal={async (product) => {
+            const marketProduct: IMarketProduct = {
+              name: product.name,
+              unit: product.unit,
+              price: product.price,
+              category: product.category,
+              marketId: product.market._id,
+            };
+            const { success } = await updateProducts(product._id, marketProduct);
+            if (success) {
+              setProductViewOpen(false);
+              setEditView(false);
+              setEditProduct(null);
+            }
+          }}
         />
       )}
     </div>
