@@ -9,35 +9,39 @@ import { useMarketHook } from "./market-hook";
 import { ProductCard, ProductCardSkeleton } from "./productCard";
 import { MarketFilters } from "./filters";
 // import { ShimmerTable } from "@/components/ui/shimmerTable";
-
+import { useDebounce } from "@/hooks/useDebounce";
 export default function Market() {
   const {
     isLoadingProducts,
     markets,
-    
+    fetchMarkets,
     products,
     productPagination,
     fetchProducts,
     loadMoreProducts,
+    addToWatchList,
   } = useMarketHook();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeMarketId, setActiveMarketId] = useState("all");
-
+  const debounceSearch = useDebounce(searchTerm, 500);
   // Fetch initial products and listen for filter changes
   useEffect(() => {
     const filters: any = {};
-    if (searchTerm) filters.search = searchTerm;
+    if (debounceSearch) filters.search = debounceSearch;
     if (activeCategory !== "all") filters.category = activeCategory;
     if (activeMarketId !== "all") filters.marketId = activeMarketId;
 
     fetchProducts(1, 12, filters);
-  }, [activeCategory, activeMarketId, fetchProducts,searchTerm]);
-
+  }, [activeCategory, activeMarketId, fetchProducts,debounceSearch]);
+  
+  useEffect(() => {
+    fetchMarkets()
+  }, [fetchMarkets]);
   const handleSearchSubmit = () => {
     const filters: any = {};
-    if (searchTerm) filters.search = searchTerm;
+    if (debounceSearch) filters.search = debounceSearch;
     if (activeCategory !== "all") filters.category = activeCategory;
     if (activeMarketId !== "all") filters.marketId = activeMarketId;
 
@@ -46,15 +50,15 @@ export default function Market() {
 
   const handleLoadMore = () => {
     const filters: any = {};
-    if (searchTerm) filters.search = searchTerm;
+    if (debounceSearch) filters.search = debounceSearch;
     if (activeCategory !== "all") filters.category = activeCategory;
     if (activeMarketId !== "all") filters.marketId = activeMarketId;
 
     loadMoreProducts(filters);
   };
-
+ console.log(markets,"markets")
   return (
-    <div className="w-full flex flex-col pb-0">
+    <div className="w-full flex flex-col pb-0 dark:bg-white">
       {/* ─── HERO SECTION ─── */}
       <section className="relative w-full h-[360px] sm:h-[450px] flex items-center justify-center overflow-hidden">
         {/* Background */}
@@ -64,8 +68,9 @@ export default function Market() {
             alt="Vibrant Nigerian Market"
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-white/40" />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/30 to-[#f8f9fa] mix-blend-multiply" />
+          <div className="absolute inset-0 bg-white/20" />
+          <div className="absolute inset-0 bg-gradient-to-t from-white via-white/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-white/30 via-transparent to-transparent" />
         </div>
 
         {/* Content */}
@@ -115,8 +120,8 @@ export default function Market() {
       />
 
       {/* ─── MARKETPLACE GRID ─── */}
-      <section className="w-full max-w-7xl mx-auto px-6 py-16">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
+      <section className="w-full max-w-7xl mx-auto px-6 py-16 dark:bg-white">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between  mb-8 gap-4">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 mb-1 block">
               Marketplace
@@ -141,7 +146,12 @@ export default function Market() {
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
               {products.map((product, idx) => (
-                <ProductCard key={`${product._id}-${idx}`} product={product} idx={idx} />
+                <ProductCard 
+                  key={`${product._id}-${idx}`} 
+                  product={product} 
+                  idx={idx} 
+                  onWatchListToggle={addToWatchList} 
+                />
               ))}
             </div>
 
@@ -152,9 +162,9 @@ export default function Market() {
                   onClick={handleLoadMore}
                   disabled={isLoadingProducts}
                   variant="outline" 
-                  className="bg-gray-50 hover:bg-gray-100 border-gray-200 text-[#0D6449] font-bold px-8 py-6 rounded-xl flex items-center gap-2 disabled:opacity-50"
+                  className="bg-gray-50 cursor-pointer   text-[#0D6449] hover:text-primary-venato font-bold px-8 py-6 rounded-xl flex items-center gap-2"
                 >
-                  {isLoadingProducts ? "Loading..." : "Load More Heritage Harvests"}
+                  {isLoadingProducts ? "Loading..." : "Load More Products"}
                 </Button>
               </div>
             )}
@@ -183,7 +193,7 @@ export default function Market() {
       </section>
 
       {/* ─── OUR PROMISE SECTION ─── */}
-      <section className="w-full bg-[#0a1811] mt-10">
+      <section className="w-full bg-white border-t border-gray-100 mt-10">
         <div className="max-w-7xl mx-auto px-6 py-24 sm:py-32 grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-8 items-center">
           <motion.div 
             initial={{ opacity: 0, x: -40 }}
@@ -192,28 +202,28 @@ export default function Market() {
             transition={{ duration: 0.7 }}
             className="flex flex-col"
           >
-            <span className="text-[10px] font-bold text-emerald-500/80 uppercase tracking-[0.2em] mb-4">
+            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-[0.2em] mb-4">
               Our Promise
             </span>
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-[1.1]" style={{ fontFamily: "'Outfit', sans-serif" }}>
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-[1.1]" style={{ fontFamily: "'Outfit', sans-serif" }}>
               The Architect of Fair Trade
             </h2>
-            <p className="text-base sm:text-lg text-emerald-50/60 leading-relaxed max-w-md mb-12">
+            <p className="text-base sm:text-lg text-gray-600 leading-relaxed max-w-md mb-12">
               Every listing on Venato is physically verified by our ground agents. We ensure the heritage of your food is preserved through transparent, traceable pricing and secure logistics.
             </p>
 
             <div className="flex gap-8 sm:gap-12 flex-wrap">
               <div>
-                <span className="block text-3xl font-bold text-white mb-1">12k+</span>
-                <span className="text-xs text-white/50 font-medium uppercase tracking-wider">Verified Traders</span>
+                <span className="block text-3xl font-bold text-gray-900 mb-1">12k+</span>
+                <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">Verified Traders</span>
               </div>
               <div>
-                <span className="block text-3xl font-bold text-white mb-1">₦2.4B</span>
-                <span className="text-xs text-white/50 font-medium uppercase tracking-wider">Traded Annually</span>
+                <span className="block text-3xl font-bold text-gray-900 mb-1">₦2.4B</span>
+                <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">Traded Annually</span>
               </div>
               <div>
-                <span className="block text-3xl font-bold text-white mb-1">100%</span>
-                <span className="text-xs text-white/50 font-medium uppercase tracking-wider">Payment Security</span>
+                <span className="block text-3xl font-bold text-gray-900 mb-1">100%</span>
+                <span className="text-xs text-gray-500 font-medium uppercase tracking-wider">Payment Security</span>
               </div>
             </div>
           </motion.div>

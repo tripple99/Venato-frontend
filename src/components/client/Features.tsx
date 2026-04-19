@@ -85,7 +85,12 @@ function MarketAlertMockup() {
 
 /* ─── Avatar stack for Community card ─── */
 function AvatarStack() {
-  const colors = ["bg-amber-500", "bg-emerald-500", "bg-blue-500", "bg-purple-500"];
+  const colors = [
+    "bg-amber-500",
+    "bg-emerald-500",
+    "bg-blue-500",
+    "bg-purple-500",
+  ];
   const initials = ["AO", "KM", "SC", "BJ"];
 
   return (
@@ -143,7 +148,11 @@ function TestimonialCard({
           <p className="text-sm font-semibold text-gray-900">{name}</p>
           <div className="flex gap-0.5">
             {[...Array(5)].map((_, i) => (
-              <Star key={i} size={10} className="fill-amber-400 text-amber-400" />
+              <Star
+                key={i}
+                size={10}
+                className="fill-amber-400 text-amber-400"
+              />
             ))}
           </div>
         </div>
@@ -158,7 +167,10 @@ function TestimonialCard({
    ═══════════════════════════════════════════════════════════ */
 export default function Features() {
   return (
-    <section id="features" className="py-20 sm:py-28 px-6 sm:px-10 lg:px-16 max-w-7xl mx-auto">
+    <section
+      id="features"
+      className="py-20 sm:py-28 px-6 sm:px-10 lg:px-16 max-w-7xl mx-auto"
+    >
       {/* Section Header */}
       <motion.div
         variants={fadeInUp}

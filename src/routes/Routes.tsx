@@ -2,10 +2,10 @@ import ClientLayout from "@/components/layout/ClientLayout";
 
 import {createBrowserRouter} from "react-router-dom";
 import Market from "@/pages/Market/Market";
+import ProductDetails from "@/pages/Market/ProductDetails";
 
 import AdminLayout from "@/components/layout/AdminLayout";
 import AuthLayout from "@/components/layout/AuthLayout";
-import MarketLayout from "@/components/layout/MarketLayout";
 import Dashboard from "@/pages/Admin/dashboard";
 import ProductList from "@/pages/Admin/product-list";
 import Product from "@/pages/Admin/products";
@@ -37,7 +37,9 @@ export const router  = createBrowserRouter([
   path:"/",
   element:<ClientLayout/>,
   children:[
-    { index: true, element: <Home /> }
+    { index: true, element: <Home /> },
+    { path:"markets", element: <Market /> },
+    { path:"product/:id", element: <ProductDetails /> }
   ]
  },
  {
@@ -52,13 +54,7 @@ export const router  = createBrowserRouter([
 
   ]
  },
- {
-  path:"/markets",
-  element:<MarketLayout />,
-  children:[
-    { index: true, element: <Market /> }
-  ]
- },
+
   {
     path: '/user',
     loader: requireAuth([AuthRole.User]),

@@ -33,16 +33,14 @@ class MarketService {
     }
   }
 
-  /**
-   * (Super Admin) Fetches details for a single market by ID.
-   * @param id Market ID
-   */
-  public async getMarketById(id: string): Promise<ApiResponse<IMarketData> | undefined> {
+ 
+  public async getMarketById(id: string): Promise<ApiResponse<IMarketData> > {
     try {
       const response = await apiClient.get<ApiResponse<IMarketData>>(`${this.baseUrl}/${id}`);
       return response.data;
     } catch (error) {
       handleAnyError(error);
+      throw error
     }
   }
 

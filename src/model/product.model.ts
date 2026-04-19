@@ -16,6 +16,7 @@ export interface Product {
   category: string;
   quantityAvailable:number;
   market: Market; 
+  isWatched?: boolean;
   createdBy: string;
   updatedBy?: string;
   description?: string;

@@ -22,8 +22,10 @@ export enum ICategory {
   Livestock = "Livestock",
   RootsAndTubers = "Roots and Tubers",
   Fruits = "Fruit",
+  Spices = "Spices",
   Others = "Others",
 }
+
 
 
 export enum MarketNames{

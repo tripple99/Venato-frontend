@@ -4,12 +4,15 @@ import { type IMarketData } from "@/model/market.model";
 import type { Product } from "@/model/product.model";
 import { useState, useCallback } from "react";
 import { type IPaginationMetadata } from "@/model/pagination.model";
-
+import watchListService from "@/service/watch-list.service";
+import type{WatchList} from "@/model/watch-list.model";
 export const useMarketHook = () => {
     const [isLoadingProducts, setIsLoadingProducts] = useState(false);
     const [isLoadingMarkets, setIsLoadingMarkets] = useState(false);
     const [markets, setMarkets] = useState<IMarketData[]>([]);
     const [products, setProducts] = useState<Product[]>([]);
+    const [market, setMarket] = useState<IMarketData | null>(null);
+    const [_watchList, setWatchList] = useState<WatchList[]>([]);
     
     const [marketPagination, setMarketPagination] = useState<IPaginationMetadata>({
         currentPage: 1, limit: 10, totalPages: 0, totalCount: 0, hasNextPage: false, hasPreviousPage: false
@@ -19,6 +22,18 @@ export const useMarketHook = () => {
         currentPage: 1, limit: 10, totalPages: 0, totalCount: 0, hasNextPage: false, hasPreviousPage: false
     });
 
+    const addToWatchList = async (productId: string) => {
+        try {
+            const response = await watchListService.addToWatchList(productId);
+            if (response?.payload) {
+                setWatchList(prev => [...prev, response.payload]);
+                setProducts(prev => prev.map(p => p._id === productId ? { ...p, isWatched: true } : p));
+            }
+           
+        } catch (error) {
+            console.error("Error adding to watch list:", error);
+        }
+    };
     const fetchMarkets = useCallback(async (page = 1, limit = 10, search?: string) => {
         try {
             setIsLoadingMarkets(true);
@@ -48,9 +63,24 @@ export const useMarketHook = () => {
         }
     }, []);
 
+    const fetchMarketsById = useCallback(async (id: string) => {
+        try {
+            setIsLoadingMarkets(true);
+            const response = await marketService.getMarketById(id);
+            if (response?.payload) {
+                setMarket(response.payload);
+            }
+        } catch (error) {
+            console.error("Error fetching markets:", error);
+        } finally {
+            setIsLoadingMarkets(false);
+        }
+    }, []);
+
     const fetchProducts = useCallback(async (page = 1, limit = 10, filters?: { search?: string, marketId?: string, category?: string }) => {
         try {
             setIsLoadingProducts(true);
+ 
             const params: any = { page, limit, ...filters };
             
             const response = await productService.getAllProducts(params);
@@ -89,8 +119,11 @@ export const useMarketHook = () => {
         products,
         marketPagination,
         productPagination,
+        addToWatchList,
         fetchMarkets,
         fetchProducts,
-        loadMoreProducts
+        loadMoreProducts,
+        market,
+        fetchMarketsById
     };
 };
