@@ -59,6 +59,7 @@ export function ChartLineDotsColors({
   trendingText = "Trending up by 5.2% this month",
   isLoading = false
 }: ChartProps) {
+  console.log("data", data);
   if (isLoading) {
     return (
       <Card>

@@ -11,9 +11,9 @@ class MarketService {
    * Fetches markets available for public view.
    * @param query Optional query parameters for pagination, sorting, or searching
    */
-  public async getPublicMarkets(query?: any): Promise<ApiResponse<IMarketData[]> | undefined> {
+  public async getPublicMarkets(query?: any): Promise<PaginatedApiResponse<IMarketData> | undefined> {
     try {
-      const response = await apiClient.get<ApiResponse<IMarketData[]>>(`${this.baseUrl}/public`, { params: query });
+      const response = await apiClient.get<PaginatedApiResponse<IMarketData>>(`${this.baseUrl}/public`, { params: query });
       return response.data;
     } catch (error) {
       handleAnyError(error);

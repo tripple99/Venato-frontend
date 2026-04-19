@@ -1,6 +1,7 @@
 import ClientLayout from "@/components/layout/ClientLayout";
 
 import {createBrowserRouter} from "react-router-dom";
+import Market from "@/pages/Market/Market";
 
 import AdminLayout from "@/components/layout/AdminLayout";
 import AuthLayout from "@/components/layout/AuthLayout";
@@ -55,7 +56,7 @@ export const router  = createBrowserRouter([
   path:"/markets",
   element:<MarketLayout />,
   children:[
-
+    { index: true, element: <Market /> }
   ]
  },
   {

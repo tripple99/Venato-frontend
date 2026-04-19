@@ -106,7 +106,7 @@ export default function UserDashboard() {
   ];
 
   // Mock trend data for the chart (representing growth over time)
-  const currentVal = stats?.totalInventoryValue || 44000;
+  const currentVal = stats?.totalInventoryValue || 0;
   const trendData = [
     { label: "Jan", value: currentVal * 0.8 },
     { label: "Feb", value: currentVal * 0.85 },

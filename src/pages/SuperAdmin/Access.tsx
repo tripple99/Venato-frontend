@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+
 import {
   Select,
   SelectContent,
@@ -11,6 +11,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Dialog,
   DialogContent,
@@ -44,69 +55,18 @@ import { AuthRole } from "@/model/auth.model";
 import { useAccessControlHook } from "./columns/super-admin-hooks";
 import type { IAuth } from "@/types/auth.types";
 
-// Mock data for development
-// const mockUsers: IProfile[] = [
-//   {
-//     uid: "u001",
-//     fullname: "Ahmad Musa",
-//     email: "ahmad@venato.ng",
-//     password: "",
-//     userRole: { User: "user", Admin: "admin", superAdmin: "superadmin" },
-//     allowedMarkets: { Default: "", Charanchi: "Charanchi", Ajiwa: "Ajiwa", Dawanau: "Dawanau" },
-//     sessionToken: null,
-//     refreshToken: null,
-//     provider: { Google: "google", Twitter: "twitter", Facebook: "facebook" },
-//     roles: AuthRole.Admin,
-//     userMarket: ["Charanci"],
-//     isActive: true,
-//     lastActive: new Date("2025-12-15T14:30:00"),
-//   },
-//   {
-//     uid: "u002",
-//     fullname: "Fatima Yusuf",
-//     email: "fatima@venato.ng",
-//     password: "",
-//     userRole: { User: "user", Admin: "admin", superAdmin: "superadmin" },
-//     allowedMarkets: { Default: "", Charanchi: "Charanchi", Ajiwa: "Ajiwa", Dawanau: "Dawanau" },
-//     sessionToken: null,
-//     refreshToken: null,
-//     provider: { Google: "google", Twitter: "twitter", Facebook: "facebook" },
-//     roles: AuthRole.Admin,
-//     userMarket: ["Ajiwa", "Dawanau"],
-//     isActive: true,
-//     lastActive: new Date("2025-12-14T10:00:00"),
-//   },
-//   {
-//     uid: "u003",
-//     fullname: "Ibrahim Sani",
-//     email: "ibrahim@venato.ng",
-//     password: "",
-//     userRole: { User: "user", Admin: "admin", superAdmin: "superadmin" },
-//     allowedMarkets: { Default: "", Charanchi: "Charanchi", Ajiwa: "Ajiwa", Dawanau: "Dawanau" },
-//     sessionToken: null,
-//     refreshToken: null,
-//     provider: { Google: "google", Twitter: "twitter", Facebook: "facebook" },
-//     roles: AuthRole.User,
-//     userMarket: [],
-//     isActive: true,
-//     lastActive: new Date("2025-12-13T08:45:00"),
-//   },
-//   {
-//     uid: "u004",
-//     fullname: "Amina Bello",
-//     email: "amina@venato.ng",
-//     password: "",
-//     userRole: { User: "user", Admin: "admin", superAdmin: "superadmin" },
-//     allowedMarkets: { Default: "", Charanchi: "Charanchi", Ajiwa: "Ajiwa", Dawanau: "Dawanau" },
-//     sessionToken: null,
-//     refreshToken: null,
-//     provider: { Google: "google", Twitter: "twitter", Facebook: "facebook" },
-//     roles: AuthRole.User,
-//     userMarket: [],
-//     isActive: false,
-//     lastActive: new Date("2025-11-28T12:00:00"),
-//   },
-// ];
+const accessSchema = z.object({
+  grantType: z.enum(["role", "market"]),
+  grantRole: z.nativeEnum(AuthRole).optional(),
+  grantMarket: z.string().optional(),
+}).refine(data => {
+  if (data.grantType === "role") return !!data.grantRole;
+  if (data.grantType === "market") return !!data.grantMarket;
+  return true;
+}, { message: "Selection is required" });
+
+type AccessFormValues = z.infer<typeof accessSchema>;
+
 
 export default function AccessControl() {
   const {
@@ -130,10 +90,16 @@ export default function AccessControl() {
   const [revokeOpen, setRevokeOpen] = useState(false);
   const [userToRevoke, setUserToRevoke] = useState<IAuth | null>(null);
 
-  // Grant form state
-  const [grantRole, setGrantRole] = useState<AuthRole>(AuthRole.User);
-  const [grantMarket, setGrantMarket] = useState<string>("");
-  const [grantType, setGrantType] = useState<"role" | "market">("role");
+  const form = useForm<AccessFormValues>({
+    resolver: zodResolver(accessSchema),
+    defaultValues: {
+      grantType: "role",
+      grantRole: AuthRole.User,
+      grantMarket: "",
+    },
+  });
+
+  const watchGrantType = form.watch("grantType");
 
   useEffect(() => {
     fetchUsers(pagination.page, pagination.limit);
@@ -162,8 +128,11 @@ export default function AccessControl() {
 
   const handleGrantRole = (user: IProfile) => {
     setSelectedUser(user);
-    setGrantRole(user.roles || AuthRole.User);
-    setGrantType("role");
+    form.reset({
+      grantType: "role",
+      grantRole: user.roles || AuthRole.User,
+      grantMarket: "",
+    });
     setGrantOpen(true);
   };
 
@@ -172,19 +141,19 @@ export default function AccessControl() {
     setRevokeOpen(true);
   };
 
-  const handleGrantSubmit = async () => {
+  const handleGrantSubmit = async (data: AccessFormValues) => {
     if (!selectedUser) return;
     
     let result = { success: false };
-    if (grantType === "role") {
-      result = await grantRoleAccess(selectedUser._id, grantRole);
-    } else if (grantMarket) {
-      result = await grantMarketAccess(selectedUser._id, grantMarket);
+    if (data.grantType === "role" && data.grantRole) {
+      result = await grantRoleAccess(selectedUser._id, data.grantRole);
+    } else if (data.grantType === "market" && data.grantMarket) {
+      result = await grantMarketAccess(selectedUser._id, data.grantMarket);
     }
 
     if (result.success) {
       setGrantOpen(false);
-      setGrantMarket("");
+      form.setValue("grantMarket", "");
     }
   };
 
@@ -381,82 +350,101 @@ export default function AccessControl() {
               Update role or market access for {selectedUser?.fullname}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            {/* Toggle between role and market*/}
-            <div className="flex gap-2">
-              <Button
-                variant={grantType === "role" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setGrantType("role")}
-                className={grantType === "role" ? "bg-primary-venato hover:bg-primary-venato/90" : ""}
-              >
-                Grant Role
-              </Button>
-              <Button
-                variant={grantType === "market" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setGrantType("market")}
-                className={grantType === "market" ? "bg-primary-venato hover:bg-primary-venato/90" : ""}
-              >
-                Grant Market Access
-              </Button>
-            </div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleGrantSubmit)}>
+              <div className="space-y-4 py-4">
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant={watchGrantType === "role" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => form.setValue("grantType", "role")}
+                    className={watchGrantType === "role" ? "bg-primary-venato hover:bg-primary-venato/90" : ""}
+                  >
+                    Grant Role
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={watchGrantType === "market" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => form.setValue("grantType", "market")}
+                    className={watchGrantType === "market" ? "bg-primary-venato hover:bg-primary-venato/90" : ""}
+                  >
+                    Grant Market Access
+                  </Button>
+                </div>
 
-            {grantType === "role" ? (
-              <div className="space-y-2">
-                <Label htmlFor="grant-role">Select Role</Label>
-                <Select
-                  value={grantRole}
-                  onValueChange={(value) => setGrantRole(value as AuthRole)}
+                {watchGrantType === "role" ? (
+                  <FormField
+                    control={form.control}
+                    name="grantRole"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Select Role</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {Object.values(AuthRole).map((role) => (
+                              <SelectItem key={role} value={role} className="capitalize">
+                                {role}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : (
+                  <FormField
+                    control={form.control}
+                    name="grantMarket"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Select Market</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose a market" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {markets.map((market) => (
+                              <SelectItem key={market._id} value={market._id}>
+                                {market.name}
+                              </SelectItem>
+                            ))}
+                            {marketPagination.hasNextPage && (
+                              <div ref={lastMarketElementRef} className="h-4" />
+                            )}
+                            {marketPagination.isLoading && (
+                              <div className="p-2 text-sm text-center text-muted-foreground">Loading more...</div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setGrantOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-primary-venato hover:bg-primary-venato/90"
                 >
-                  <SelectTrigger id="grant-role">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.values(AuthRole).map((role) => (
-                      <SelectItem key={role} value={role} className="capitalize">
-                        {role}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Label htmlFor="grant-market">Select Market</Label>
-                <Select value={grantMarket} onValueChange={setGrantMarket}>
-                  <SelectTrigger id="grant-market">
-                    <SelectValue placeholder="Choose a market" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {markets.map((market) => (
-                      <SelectItem key={market._id} value={market._id}>
-                        {market.name}
-                      </SelectItem>
-                    ))}
-                    {marketPagination.hasNextPage && (
-                      <div ref={lastMarketElementRef} className="h-4" />
-                    )}
-                    {marketPagination.isLoading && (
-                      <div className="p-2 text-sm text-center text-muted-foreground">Loading more...</div>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setGrantOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleGrantSubmit}
-              className="bg-primary-venato hover:bg-primary-venato/90"
-              disabled={grantType === "market" && !grantMarket}
-            >
-              Grant Access
-            </Button>
-          </DialogFooter>
+                  Grant Access
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 

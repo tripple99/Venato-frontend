@@ -22,10 +22,10 @@ export const createAlertColumns = (
     },
   },
   {
-    accessorKey: "marketId",
+    accessorKey: "market",
     header: "Market",
     cell: ({ row }) => {
-      const market = row.getValue("marketId") as string | IMarketData;
+      const market = row.getValue("market") as string | IMarketData;
       const name = typeof market === "object" && market !== null ? market.name : market;
       return <span className="font-medium">{name}</span>;
     },

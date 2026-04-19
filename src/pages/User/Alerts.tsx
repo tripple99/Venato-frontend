@@ -4,7 +4,6 @@ import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -12,6 +11,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Dialog,
   DialogContent,
@@ -42,63 +52,10 @@ import {
 } from "lucide-react";
 import { createAlertColumns } from "./columns/alert-columns";
 import type { Alert } from "@/model/alert.model";
-import alertService from "@/service/alert.service";
-import { toast } from "sonner";
+import { useUserHook } from "./columns/user-hooks";
+import InfiniteCombobox from "@/components/infinineCombo";
 
-// Mock data for development
-const mockAlerts: Alert[] = [
-  {
-    id: "a001",
-    productId: "p001",
-    marketId: "Charanci",
-    targetValue: 30000,
-    condition: "above",
-    currency: "NGN",
-    cooldownMinutes: 60,
-    isActive: true,
-    lastTriggeredAt: "2025-12-15T14:30:00Z",
-  },
-  {
-    id: "a002",
-    productId: "p002",
-    marketId: "Ajiwa",
-    targetValue: 18000,
-    condition: "below",
-    currency: "NGN",
-    cooldownMinutes: 120,
-    isActive: true,
-  },
-  {
-    id: "a003",
-    productId: "p005",
-    marketId: "Dawanau",
-    targetValue: 10,
-    condition: "change_pct",
-    currency: "NGN",
-    cooldownMinutes: 30,
-    isActive: false,
-    lastTriggeredAt: "2025-12-10T09:00:00Z",
-  },
-  {
-    id: "a004",
-    productId: "p003",
-    marketId: "Charanci",
-    targetValue: 5000,
-    condition: "equal",
-    currency: "NGN",
-    isActive: true,
-  },
-  {
-    id: "a005",
-    productId: "p007",
-    marketId: "Charanci",
-    targetValue: 8000,
-    condition: "above",
-    currency: "NGN",
-    cooldownMinutes: 60,
-    isActive: false,
-  },
-];
+
 
 const conditionLabels: Record<string, string> = {
   above: "Price Above",
@@ -107,9 +64,36 @@ const conditionLabels: Record<string, string> = {
   change_pct: "% Change",
 };
 
+const alertSchema = z.object({
+  productId: z.string().min(1, "Product is required"),
+  marketId: z.string().min(1, "Market is required"),
+  targetValue: z.number().min(0.01, "Target value must be greater than 0"),
+  condition: z.enum(["equal", "above", "below", "change_pct"]),
+  currency: z.string(),
+  cooldownMinutes: z.number().min(0, "Cooldown must be non-negative"),
+  isActive: z.boolean(),
+});
+type AlertFormValues = z.infer<typeof alertSchema>;
+
 export default function Alerts() {
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    alert: alerts,
+    alertPagination: pagination,
+    isLoading,
+    fetchAlerts,
+    createAlert,
+    updateAlert,
+    deleteAlert,
+    markets,
+    marketPagination,
+    fetchAllMarkets,
+    loadMoreMarkets,
+    products,
+    productPagination,
+    fetchAllProducts,
+    loadMoreProducts,
+  } = useUserHook();
+
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
@@ -118,34 +102,39 @@ export default function Alerts() {
   const [alertToDelete, setAlertToDelete] = useState<Alert | null>(null);
 
   // Form state
-  const [formData, setFormData] = useState({
-    productId: "",
-    marketId: "",
-    targetValue: 0,
-    condition: "above" as Alert["condition"],
-    currency: "NGN",
-    cooldownMinutes: 60,
-    isActive: true,
+  const form = useForm<AlertFormValues>({
+    resolver: zodResolver(alertSchema),
+    defaultValues: {
+      productId: "",
+      marketId: "",
+      targetValue: 0,
+      condition: "above",
+      currency: "NGN",
+      cooldownMinutes: 60,
+      isActive: true,
+    },
   });
 
+  const watchMarketId = form.watch("marketId");
+  const watchCondition = form.watch("condition");
+  const watchProductId = form.watch("productId");
+
+  const selectedProductData = useMemo(() => 
+    products.find(p => p._id === watchProductId),
+    [products, watchProductId]
+  );
+
+
+
   useEffect(() => {
-    const fetchAlerts = async () => {
-      setIsLoading(true);
-      try {
-        const response = await alertService.getAlerts();
-        if (response?.payload) {
-          setAlerts(response.payload);
-        } else {
-          setAlerts(mockAlerts);
-        }
-      } catch {
-        setAlerts(mockAlerts);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchAlerts();
-  }, []);
+  }, [fetchAlerts]);
+
+  useEffect(() => {
+    if (createOpen || editOpen) {
+      fetchAllMarkets(1);
+    }
+  }, [createOpen, editOpen, fetchAllMarkets]);
 
   const handleView = (alert: Alert) => {
     setSelectedAlert(alert);
@@ -154,15 +143,17 @@ export default function Alerts() {
 
   const handleEdit = (alert: Alert) => {
     setSelectedAlert(alert);
-    setFormData({
-      productId: alert.productId,
-      marketId: alert.marketId,
+    const mId = typeof alert.market === "string" ? alert.market : alert.market?._id;
+    form.reset({
+      productId: typeof alert.productId === "string" ? alert.productId : alert.productId?._id || "",
+      marketId: mId || "",
       targetValue: alert.targetValue,
-      condition: alert.condition,
+      condition: alert.condition as any,
       currency: alert.currency,
       cooldownMinutes: alert.cooldownMinutes || 60,
       isActive: alert.isActive,
     });
+    if (mId) fetchAllProducts(1, mId);
     setEditOpen(true);
   };
 
@@ -172,75 +163,37 @@ export default function Alerts() {
   };
 
   const handleToggle = async (alert: Alert) => {
-    try {
-      await alertService.updateAlert(alert.id, { isActive: !alert.isActive });
-      setAlerts((prev) =>
-        prev.map((a) => (a.id === alert.id ? { ...a, isActive: !a.isActive } : a))
-      );
-      toast.success(`Alert ${!alert.isActive ? "activated" : "deactivated"}`);
-    } catch {
-      setAlerts((prev) =>
-        prev.map((a) => (a.id === alert.id ? { ...a, isActive: !a.isActive } : a))
-      );
-      toast.success(`Alert ${!alert.isActive ? "activated" : "deactivated"}`);
-    }
+    await updateAlert(alert._id || alert.id || "", { isActive: !alert.isActive });
   };
 
   const handleDeleteConfirm = async () => {
     if (!alertToDelete) return;
-    try {
-      await alertService.deleteAlert(alertToDelete.id);
-      setAlerts((prev) => prev.filter((a) => a.id !== alertToDelete.id));
-    } catch {
-      setAlerts((prev) => prev.filter((a) => a.id !== alertToDelete.id));
-      toast.success("Alert deleted");
-    } finally {
+    const result = await deleteAlert(alertToDelete._id || alertToDelete.id || "");
+    if (result.success) {
       setDeleteOpen(false);
       setAlertToDelete(null);
     }
   };
 
-  const handleCreate = async () => {
-    try {
-      const response = await alertService.createAlert(formData);
-      if (response?.payload) {
-        setAlerts((prev) => [...prev, response.payload]);
-      } else {
-        const newAlert: Alert = { id: `a-${Date.now()}`, ...formData };
-        setAlerts((prev) => [...prev, newAlert]);
-        toast.success("Alert created");
-      }
-    } catch {
-      const newAlert: Alert = { id: `a-${Date.now()}`, ...formData };
-      setAlerts((prev) => [...prev, newAlert]);
-      toast.success("Alert created");
-    } finally {
+  const handleCreate = async (data: AlertFormValues) => {
+    const result = await createAlert(data as any);
+    if (result.success) {
       setCreateOpen(false);
       resetForm();
     }
   };
 
-  const handleUpdate = async () => {
+  const handleUpdate = async (data: AlertFormValues) => {
     if (!selectedAlert) return;
-    try {
-      await alertService.updateAlert(selectedAlert.id, formData);
-      setAlerts((prev) =>
-        prev.map((a) => (a.id === selectedAlert.id ? { ...a, ...formData } : a))
-      );
-      toast.success("Alert updated");
-    } catch {
-      setAlerts((prev) =>
-        prev.map((a) => (a.id === selectedAlert.id ? { ...a, ...formData } : a))
-      );
-      toast.success("Alert updated");
-    } finally {
+    const result = await updateAlert(selectedAlert._id || selectedAlert.id || "", data as any);
+    if (result.success) {
       setEditOpen(false);
       resetForm();
     }
   };
 
   const resetForm = () => {
-    setFormData({
+    form.reset({
       productId: "",
       marketId: "",
       targetValue: 0,
@@ -251,6 +204,14 @@ export default function Alerts() {
     });
   };
 
+  const handleMarketChange = (val: string) => {
+    form.setValue("marketId", val, { shouldValidate: true });
+    form.setValue("productId", "", { shouldValidate: true });
+    if (val) {
+      fetchAllProducts(1, val);
+    }
+  };
+
   const columns = useMemo(
     () => createAlertColumns(handleView, handleEdit, handleDeleteClick, handleToggle),
     []
@@ -258,76 +219,143 @@ export default function Alerts() {
 
   const activeCount = alerts.filter((a) => a.isActive).length;
 
-  // Alert form JSX (reused for create & edit)
-  const alertForm = (
+  const alertFormFields = (
     <div className="space-y-4 py-4">
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="alert-product">Product ID</Label>
-          <Input
-            id="alert-product"
-            placeholder="e.g. p001"
-            value={formData.productId}
-            onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="alert-market">Market ID</Label>
-          <Input
-            id="alert-market"
-            placeholder="e.g. Charanci"
-            value={formData.marketId}
-            onChange={(e) => setFormData({ ...formData, marketId: e.target.value })}
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="alert-condition">Condition</Label>
-          <Select
-            value={formData.condition}
-            onValueChange={(value) =>
-              setFormData({ ...formData, condition: value as Alert["condition"] })
-            }
-          >
-            <SelectTrigger id="alert-condition">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="above">Price Above</SelectItem>
-              <SelectItem value="below">Price Below</SelectItem>
-              <SelectItem value="equal">Price Equal</SelectItem>
-              <SelectItem value="change_pct">% Change</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="alert-target">
-            {formData.condition === "change_pct" ? "Percentage" : "Target Price"}
-          </Label>
-          <Input
-            id="alert-target"
-            type="number"
-            placeholder={formData.condition === "change_pct" ? "e.g. 10" : "e.g. 25000"}
-            value={formData.targetValue || ""}
-            onChange={(e) =>
-              setFormData({ ...formData, targetValue: Number(e.target.value) })
-            }
-          />
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="alert-cooldown">Cooldown (minutes)</Label>
-        <Input
-          id="alert-cooldown"
-          type="number"
-          placeholder="e.g. 60"
-          value={formData.cooldownMinutes || ""}
-          onChange={(e) =>
-            setFormData({ ...formData, cooldownMinutes: Number(e.target.value) })
-          }
+        <FormField
+          control={form.control}
+          name="marketId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Market</FormLabel>
+              <FormControl>
+                <InfiniteCombobox
+                  items={markets.map((m) => ({ value: m._id, label: m.name }))}
+                  value={field.value}
+                  onChange={handleMarketChange}
+                  onLoadMore={loadMoreMarkets}
+                  hasMore={marketPagination.hasNextPage}
+                  isLoading={isLoading}
+                  placeholder="Select market"
+                  searchPlaceholder="Search markets..."
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="productId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Product</FormLabel>
+              <FormControl>
+                <InfiniteCombobox
+                  items={products.map((p) => ({ value: p._id, label: p.name }))}
+                  value={field.value}
+                  onChange={(val) => form.setValue("productId", val, { shouldValidate: true })}
+                  onLoadMore={() => loadMoreProducts(watchMarketId)}
+                  hasMore={productPagination.hasNextPage}
+                  isLoading={isLoading}
+                  placeholder={watchMarketId ? "Select product" : "Select a market first"}
+                  searchPlaceholder="Search products..."
+                  disabled={!watchMarketId}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
       </div>
+      {selectedProductData && (
+        <div className="p-3 rounded-lg bg-primary-venato/5 border border-primary-venato/10 flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 rounded-md bg-primary-venato/10">
+              <TrendingUp className="h-4 w-4 text-primary-venato" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground leading-none mb-1">Current Market Price</p>
+              <p className="text-sm font-bold text-primary-venato">
+                {new Intl.NumberFormat("en-NG", {
+                  style: "currency",
+                  currency: selectedProductData.market?.currency || "NGN",
+                  minimumFractionDigits: 0,
+                }).format(selectedProductData.price)}
+                <span className="text-[10px] text-muted-foreground ml-1 font-normal">
+                  per {selectedProductData.unit}
+                </span>
+              </p>
+            </div>
+          </div>
+          <Badge variant="outline" className="bg-background/50 text-[10px] h-5">
+            {selectedProductData.market?.name}
+          </Badge>
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-4">
+        <FormField
+          control={form.control}
+          name="condition"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Condition</FormLabel>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger id="alert-condition">
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="above">Price Above</SelectItem>
+                  <SelectItem value="below">Price Below</SelectItem>
+                  <SelectItem value="equal">Price Equal</SelectItem>
+                  <SelectItem value="change_pct">% Change</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="targetValue"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>
+                {watchCondition === "change_pct" ? "Percentage" : "Target Price"}
+              </FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  placeholder={watchCondition === "change_pct" ? "e.g. 10" : "e.g. 25000"}
+                  {...field}
+                  onChange={(e) => field.onChange(Number(e.target.value))}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+      <FormField
+        control={form.control}
+        name="cooldownMinutes"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Cooldown (minutes)</FormLabel>
+            <FormControl>
+              <Input
+                type="number"
+                placeholder="e.g. 60"
+                {...field}
+                onChange={(e) => field.onChange(Number(e.target.value))}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
     </div>
   );
 
@@ -403,11 +431,16 @@ export default function Alerts() {
             data={alerts}
             searchKey="productId"
             isLoading={isLoading}
+            pagination={pagination}
+            pageCount={pagination.totalPages}
+            pageIndex={pagination.currentPage - 1}
+            pageSize={pagination.limit}
+            onPaginationChange={(p) => fetchAlerts(p.pageIndex + 1, p.pageSize)}
           />
         </CardContent>
       </Card>
 
-      {/* View Details Dialog */}
+      {/* View Details Dialog */} 
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -428,12 +461,20 @@ export default function Alerts() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-3 rounded-lg border space-y-1">
-                  <p className="text-sm text-muted-foreground">Product ID</p>
-                  <p className="font-mono font-semibold">{selectedAlert.productId}</p>
+                  <p className="text-sm text-muted-foreground">Product</p>
+                  <p className="font-mono font-semibold">
+                    {typeof selectedAlert.productId === "string" 
+                      ? selectedAlert.productId 
+                      : selectedAlert.productId.name}
+                  </p>
                 </div>
                 <div className="p-3 rounded-lg border space-y-1">
                   <p className="text-sm text-muted-foreground">Market</p>
-                  <p className="font-semibold">{selectedAlert.marketId}</p>
+                  <p className="font-semibold">
+                    {typeof selectedAlert.market === "string" 
+                      ? selectedAlert.market 
+                      : selectedAlert?.market?.name}
+                  </p>
                 </div>
               </div>
 
@@ -501,19 +542,25 @@ export default function Alerts() {
               Set up a new price alert for a product
             </DialogDescription>
           </DialogHeader>
-          {alertForm}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleCreate}
-              className="bg-primary-venato hover:bg-primary-venato/90"
-              disabled={!formData.productId || !formData.marketId || formData.targetValue <= 0}
-            >
-              Create Alert
-            </Button>
-          </DialogFooter>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleCreate)}>
+              {alertFormFields}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => {
+                  setCreateOpen(false);
+                  resetForm();
+                }}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-primary-venato hover:bg-primary-venato/90"
+                >
+                  Create Alert
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
@@ -527,18 +574,25 @@ export default function Alerts() {
             </DialogTitle>
             <DialogDescription>Update alert configuration</DialogDescription>
           </DialogHeader>
-          {alertForm}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdate}
-              className="bg-primary-venato hover:bg-primary-venato/90"
-            >
-              Save Changes
-            </Button>
-          </DialogFooter>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleUpdate)}>
+              {alertFormFields}
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => {
+                  setEditOpen(false);
+                  resetForm();
+                }}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-primary-venato hover:bg-primary-venato/90"
+                >
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 

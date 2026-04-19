@@ -4,8 +4,18 @@ import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Dialog,
   DialogContent,
@@ -65,13 +75,20 @@ const mockMarkets: IMarketData[] = [
   },
 ];
 
-const emptyForm: Omit<IMarketData, "_id"> = {
-  name: "",
-  currency: "NGN",
-  location: { state: "", code: "", LGA: "", country: "Nigeria" },
-  isActive: true,
-  isDeleted: false,
-};
+const marketSchema = z.object({
+  name: z.string().min(2, "Market name is required"),
+  currency: z.string().min(1, "Currency is required"),
+  location: z.object({
+    state: z.string().min(1, "State is required"),
+    code: z.string().min(1, "State code is required"),
+    LGA: z.string().optional(),
+    country: z.string().min(1, "Country is required"),
+  }),
+  isActive: z.boolean(),
+  isDeleted: z.boolean().optional(),
+});
+
+type MarketFormValues = z.infer<typeof marketSchema>;
 
 export default function MarketManagement() {
   const [markets, setMarkets] = useState<IMarketData[]>([]);
@@ -82,7 +99,17 @@ export default function MarketManagement() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [marketToDelete, setMarketToDelete] = useState<IMarketData | null>(null);
-  const [formData, setFormData] = useState(emptyForm);
+
+  const form = useForm<MarketFormValues>({
+    resolver: zodResolver(marketSchema),
+    defaultValues: {
+      name: "",
+      currency: "NGN",
+      location: { state: "", code: "", LGA: "", country: "Nigeria" },
+      isActive: true,
+      isDeleted: false,
+    },
+  });
 
   useEffect(() => {
     const fetchMarkets = async () => {
@@ -110,10 +137,15 @@ export default function MarketManagement() {
 
   const handleEdit = (market: IMarketData) => {
     setSelectedMarket(market);
-    setFormData({
+    form.reset({
       name: market.name,
       currency: market.currency,
-      location: { ...market.location },
+      location: { 
+        state: market.location.state,
+        code: market.location.code,
+        LGA: market.location.LGA || "",
+        country: market.location.country || "Nigeria"
+      },
       isActive: market.isActive,
       isDeleted: market.isDeleted,
     });
@@ -122,7 +154,13 @@ export default function MarketManagement() {
   };
 
   const handleCreate = () => {
-    setFormData({ ...emptyForm, location: { ...emptyForm.location } });
+    form.reset({
+      name: "",
+      currency: "NGN",
+      location: { state: "", code: "", LGA: "", country: "Nigeria" },
+      isActive: true,
+      isDeleted: false,
+    });
     setIsEditMode(false);
     setFormOpen(true);
   };
@@ -146,32 +184,32 @@ export default function MarketManagement() {
     }
   };
 
-  const handleSubmit = async () => {
+  const onSubmit = async (data: MarketFormValues) => {
     if (isEditMode && selectedMarket?._id) {
       try {
-        await marketService.updateMarket(selectedMarket._id, formData);
+        await marketService.updateMarket(selectedMarket._id, data as IMarketData);
         setMarkets((prev) =>
           prev.map((m) =>
-            m._id === selectedMarket._id ? { ...m, ...formData } : m
+            m._id === selectedMarket._id ? { ...m, ...(data as unknown as IMarketData) } : m
           )
         );
       } catch {
         setMarkets((prev) =>
           prev.map((m) =>
-            m._id === selectedMarket._id ? { ...m, ...formData } : m
+            m._id === selectedMarket._id ? { ...m, ...(data as unknown as IMarketData) } : m
           )
         );
         toast.success("Market updated");
       }
     } else {
       try {
-        const response = await marketService.createMarket(formData as IMarketData);
+        const response = await marketService.createMarket(data as IMarketData);
         if (response?.payload) {
           setMarkets((prev) => [...prev, response.payload]);
         } else {
           const newMarket: IMarketData = {
             _id: `m-${Date.now()}`,
-            ...formData,
+            ...data,
           } as IMarketData;
           setMarkets((prev) => [...prev, newMarket]);
           toast.success("Market created");
@@ -179,14 +217,13 @@ export default function MarketManagement() {
       } catch {
         const newMarket: IMarketData = {
           _id: `m-${Date.now()}`,
-          ...formData,
+          ...data,
         } as IMarketData;
         setMarkets((prev) => [...prev, newMarket]);
         toast.success("Market created");
       }
     }
     setFormOpen(false);
-    setFormData({ ...emptyForm, location: { ...emptyForm.location } });
   };
 
   const columns = useMemo(
@@ -324,101 +361,114 @@ export default function MarketManagement() {
               {isEditMode ? "Update market details" : "Register a new market on the platform"}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="market-name">Market Name</Label>
-              <Input
-                id="market-name"
-                placeholder="e.g. Charanci"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="market-state">State</Label>
-                <Input
-                  id="market-state"
-                  placeholder="e.g. Katsina"
-                  value={formData.location.state}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      location: { ...formData.location, state: e.target.value },
-                    })
-                  }
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <div className="space-y-4 py-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Market Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. Charanci" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="location.state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>State</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. Katsina" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="location.code"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>State Code</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. KT" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="location.LGA"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>LGA</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. Charanchi" {...field} value={field.value || ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="location.country"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Country</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. Nigeria" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="cursor-pointer">
+                          Market is active and operational
+                        </FormLabel>
+                      </div>
+                    </FormItem>
+                  )}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="market-code">State Code</Label>
-                <Input
-                  id="market-code"
-                  placeholder="e.g. KT"
-                  value={formData.location.code}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      location: { ...formData.location, code: e.target.value },
-                    })
-                  }
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="market-lga">LGA</Label>
-                <Input
-                  id="market-lga"
-                  placeholder="e.g. Charanchi"
-                  value={formData.location.LGA || ""}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      location: { ...formData.location, LGA: e.target.value },
-                    })
-                  }
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="market-country">Country</Label>
-                <Input
-                  id="market-country"
-                  placeholder="e.g. Nigeria"
-                  value={formData.location.country}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      location: { ...formData.location, country: e.target.value },
-                    })
-                  }
-                />
-              </div>
-            </div>
-            <div className="flex items-center gap-2 p-3 rounded-lg border">
-              <Checkbox
-                id="market-active"
-                checked={formData.isActive}
-                onCheckedChange={(checked) =>
-                  setFormData({ ...formData, isActive: checked as boolean })
-                }
-              />
-              <Label htmlFor="market-active" className="cursor-pointer">
-                Market is active and operational
-              </Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setFormOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              className="bg-primary-venato hover:bg-primary-venato/90"
-              disabled={!formData.name || !formData.location.state}
-            >
-              {isEditMode ? "Save Changes" : "Create Market"}
-            </Button>
-          </DialogFooter>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-primary-venato hover:bg-primary-venato/90"
+                >
+                  {isEditMode ? "Save Changes" : "Create Market"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 

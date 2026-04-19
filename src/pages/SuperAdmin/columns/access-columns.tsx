@@ -4,7 +4,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Eye, Shield, ShieldOff } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { IMarketData } from "@/model/market.model";
 
 export const createAccessColumns = (
   onView: (user: IProfile) => void,

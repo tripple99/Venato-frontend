@@ -11,7 +11,7 @@ import type {
   MarketNames,
 } from "@/types/market.types";
 import { type Products } from "@/types/products";
-
+import {type ILocation } from "@/model/market.model";
 export const useProductHook = () => {
   const [products, setProducts] = useState<Products[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,35 +25,43 @@ export const useProductHook = () => {
     hasPreviousPage: false,
   });
 
-  const mapToProducts = (p: Product): Products => ({
-    _id: p._id,
-    name: p.name,
-    price: p.price,
-    unit: p.unit as IUnit,
-    category: p.category as ICategory,
-    market: {
-      _id: p.market._id,
-      name: p.market.name as MarketNames,
-      location: p.market.location,
-    },
-    created_at: new Date(),
-    update_at: new Date(),
-  });
-  // const [selectedProduct,setSelectedProduct] = useState<Products | null>(null);
-  // const [viewOpen,setViewOpen] = useState(false);
-  // const [deleteOpen,setDeleteOpen] = useState(false);
-  // const [productToDelete,setProductToDelete] = useState<Products | null>(null);
-  // const [productViewOpen,setProductViewOpen] = useState(false);
-  // const [editView,setEditView] = useState(false);
-  // const [editProduct,setEditProduct] = useState<Products | null>(null);
+  const mapToProducts = (p: Product): Products => {
+    const location: ILocation = {
+      ...p?.market?.location,
+      country: p?.market?.location?.country || "Nigeria"
+    };
+
+    return {
+      _id: p._id,
+      name: p.name,
+      price: p.price,
+      unit: p.unit as IUnit,
+      category: p.category as ICategory,
+      location: location,
+      quantityAvailable: p.quantityAvailable,
+      market: {
+        _id: p.market._id,
+        name: p.market.name as MarketNames,
+        location: location,
+      },
+      images: p.images || [],
+      created_at: new Date(),
+      update_at: new Date(),
+    };
+  };
+
 
   const createProduct = async (product: IMarketProduct) => {
     try {
       setIsLoading(true);
+      console.log(product);
       const res = await productService.createProduct(product);
       setIsLoading(false);
-      if (res?.payload?.data) {
-        setProducts((prev) => [mapToProducts(res.payload.data), ...prev]);
+     
+      const data = res?.payload;
+    
+      if (data) {
+        setProducts((prev) => [mapToProducts(data), ...prev]);
         return { success: true };
       }
       return { success: false };

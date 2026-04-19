@@ -1,8 +1,6 @@
-import type { ApiResponse,PaginatedApiResponse } from "@/model/api";
+import type { PaginatedApiResponse } from "@/model/api";
 import apiClient from "@/api/api-client";
 import { handleAnyError } from "@/handlers/GlobalErrorHandler";
-import { toast } from "sonner";
-import type { IAuth } from "@/types/auth.types";
 import type { IProfile } from "@/model/user.model";
 
 

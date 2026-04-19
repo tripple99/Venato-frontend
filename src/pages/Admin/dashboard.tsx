@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChartLineDotsColors } from "@/components/ui/line-chart";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Package, MapPin, TrendingUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 

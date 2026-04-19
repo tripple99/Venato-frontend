@@ -209,6 +209,7 @@ export const authAPI = {
       localStorage.removeItem("venato-refreshToken");
       // useAuthStore.getState().clearAuth();
       // useEmployerStore.getState().clearProfile();
+      useAuthStore.getState().logout();
       window.location.replace("/auth/login");
       toast.success("logged successfully");
     } catch (error) {
@@ -218,7 +219,7 @@ export const authAPI = {
       // useEmployerStore.getState().clearProfile();
       localStorage.removeItem("venato-accessToken");
       localStorage.removeItem("venato-refreshToken");
-
+      useAuthStore.getState().logout();
       window.location.replace("/auth/login");
       console.error("Logout error:", error);
     } finally {
@@ -226,6 +227,7 @@ export const authAPI = {
       localStorage.removeItem("venato-accessToken");
       localStorage.removeItem("venato-refreshToken");
       localStorage.removeItem("venato-user");
+      useAuthStore.getState().logout();
     }
   },
 

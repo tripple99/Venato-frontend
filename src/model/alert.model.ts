@@ -9,11 +9,14 @@ import type { Product } from "./product.model";
 import type { IMarketData } from "./market.model";
 
 export interface Alert {
-  id: string;
+  id?: string;
+  _id?: string;
   productId: string | Product;
   marketId: string | IMarketData;
   targetValue: number;
   condition: "equal" | "above" | "below" | "change_pct";
+  product:Product;
+  market:IMarketData;
   currency: string;
   cooldownMinutes?: number;
   lastTriggeredAt?: string;

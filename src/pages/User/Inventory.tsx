@@ -1,9 +1,9 @@
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DataTable } from "@/components/data-table";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -11,6 +11,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Dialog,
   DialogContent,
@@ -32,62 +43,36 @@ import {
 import { Package, Plus, Box, MapPin, Scale } from "lucide-react";
 import { createInventoryColumns } from "./columns/inventory-columns";
 import type { InventoryItem } from "@/model/inventory.model";
-import inventoryService from "@/service/inventory.service";
-import { toast } from "sonner";
-import { IUnit, MarketNames } from "@/types/market.types";
+import { IUnit } from "@/types/market.types";
+import { useUserHook } from "./columns/user-hooks";
+import InfiniteCombobox from "@/components/infinineCombo";
 
-// Mock data for development
-const mockInventoryPayload = {
-  data: [
-    {
-      _id: "69d188ac3ceeadba1d743d33",
-      productId: "69cd598c1f81cc25ed525fee",
-      userId: "69cd81801502f0ee01da4af7",
-      __v: 0,
-      createdAt: "2026-04-04T21:54:52.209Z",
-      preferredMarket: "69d17a8b01b151ef61644b04",
-      quantity: 10,
-      unit: "kg",
-      updatedAt: "2026-04-04T21:54:52.207Z",
-    },
-    {
-      _id: "69d188833ceeadba1d743d32",
-      userId: "69cd81801502f0ee01da4af7",
-      productId: "69cd7c9812be6a0a32f3bab3",
-      __v: 0,
-      createdAt: "2026-04-04T21:54:11.251Z",
-      preferredMarket: "69d17a8b01b151ef61644b04",
-      quantity: 10,
-      unit: "kg",
-      updatedAt: "2026-04-04T21:54:11.247Z",
-    },
-    {
-      _id: "69cd9f003ceeadba1d743d31",
-      userId: "69cd81801502f0ee01da4af7",
-      productId: "69cd597e1f81cc25ed525fe6",
-      __v: 0,
-      createdAt: "2026-04-01T22:41:04.591Z",
-      preferredMarket: "69cc127bac0b6a5d7afe9cfa",
-      quantity: 10,
-      unit: "kg",
-      updatedAt: "2026-04-01T22:41:04.587Z",
-    },
-  ],
-  totalCount: 3,
-  currentPage: 1,
-  totalPages: 1,
-  limit: 20,
-};
+const inventorySchema = z.object({
+  productId: z.string().min(1, "Product is required"),
+  preferredMarket: z.string().min(1, "Market is required"),
+  quantity: z.number().min(0.01, "Quantity must be greater than 0"),
+  unit: z.nativeEnum(IUnit),
+});
+type InventoryFormValues = z.infer<typeof inventorySchema>;
 
 export default function Inventory() {
-  const [items, setItems] = useState<InventoryItem[]>([]);
-  const [pagination, setPagination] = useState({
-    totalCount: 0,
-    currentPage: 1,
-    totalPages: 1,
-    limit: 20,
-  });
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    inventory: items,
+    inventoryPagination: pagination,
+    isLoading,
+    fetchInventory,
+    createInventory,
+    deleteInventory,
+    markets,
+    marketPagination,
+    fetchAllMarkets,
+    loadMoreMarkets,
+    products,
+    productPagination,
+    fetchAllProducts,
+    loadMoreProducts,
+  } = useUserHook();
+
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -95,53 +80,41 @@ export default function Inventory() {
   const [itemToDelete, setItemToDelete] = useState<InventoryItem | null>(null);
 
   // Form state
-  const [formData, setFormData] = useState({
-    productId: "",
-    quantity: 0,
-    unit: IUnit.TIYA as string,
-    preferredMarket: MarketNames.Charanci as string,
+  const form = useForm<InventoryFormValues>({
+    resolver: zodResolver(inventorySchema),
+    defaultValues: {
+      productId: "",
+      quantity: 0,
+      unit: IUnit.TIYA,
+      preferredMarket: "",
+    },
   });
 
+  const watchPreferredMarket = form.watch("preferredMarket");
+  const watchProductId = form.watch("productId");
+
+  const selectedProductData = useMemo(() => 
+    products.find(p => p._id === watchProductId),
+    [products, watchProductId]
+  );
+
   useEffect(() => {
-    const fetchInventory = async () => {
-      setIsLoading(true);
-      try {
-        const response = await inventoryService.getInventory({
-          page: pagination.currentPage,
-          limit: pagination.limit,
-        });
-     
-        if (response?.payload?.data) {
-          setItems(response.payload.data);
-          setPagination({
-            totalCount: response.payload.totalCount,
-            currentPage: response.payload.currentPage,
-            totalPages: response.payload.totalPages,
-            limit: response.payload.limit,
-          });
-        } else {
-          setItems(mockInventoryPayload.data);
-          setPagination({
-            totalCount: mockInventoryPayload.totalCount,
-            currentPage: mockInventoryPayload.currentPage,
-            totalPages: mockInventoryPayload.totalPages,
-            limit: mockInventoryPayload.limit,
-          });
-        }
-      } catch {
-        setItems(mockInventoryPayload.data);
-        setPagination({
-          totalCount: mockInventoryPayload.totalCount,
-          currentPage: mockInventoryPayload.currentPage,
-          totalPages: mockInventoryPayload.totalPages,
-          limit: mockInventoryPayload.limit,
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchInventory();
-  }, [pagination.currentPage, pagination.limit]);
+  }, [fetchInventory]);
+
+  useEffect(() => {
+    if (addOpen) {
+      fetchAllMarkets(1);
+    }
+  }, [addOpen, fetchAllMarkets]);
+
+  const handleMarketChange = (val: string) => {
+    form.setValue("preferredMarket", val, { shouldValidate: true });
+    form.setValue("productId", "", { shouldValidate: true });
+    if (val) {
+      fetchAllProducts(1, val);
+    }
+  };
 
   const handleView = (item: InventoryItem) => {
     setSelectedItem(item);
@@ -155,49 +128,18 @@ export default function Inventory() {
 
   const handleDeleteConfirm = async () => {
     if (!itemToDelete) return;
-    try {
-      await inventoryService.removeInventoryItem(itemToDelete._id);
-      setItems((prev) => prev.filter((i) => i._id !== itemToDelete._id));
-      toast.success("Item removed from inventory");
-    } catch {
-      setItems((prev) => prev.filter((i) => i._id !== itemToDelete._id));
-      toast.success("Item removed from inventory");
-    } finally {
+    const result = await deleteInventory(itemToDelete._id);
+    if (result.success) {
       setDeleteOpen(false);
       setItemToDelete(null);
     }
   };
 
-  const handleAdd = async () => {
-    try {
-      const response = await inventoryService.addInventoryItem(formData);
-      if (response?.payload) {
-        setItems((prev) => [...prev, response.payload]);
-      } else {
-        const newItem: InventoryItem = {
-          _id: `inv-${Date.now()}`,
-          userId: "current-user",
-          ...formData,
-        };
-        setItems((prev) => [...prev, newItem]);
-        toast.success("Item added to inventory");
-      }
-    } catch {
-      const newItem: InventoryItem = {
-        _id: `inv-${Date.now()}`,
-        userId: "current-user",
-        ...formData,
-      };
-      setItems((prev) => [...prev, newItem]);
-      toast.success("Item added to inventory");
-    } finally {
+  const handleAdd = async (data: InventoryFormValues) => {
+    const result = await createInventory(data as any);
+    if (result.success) {
       setAddOpen(false);
-      setFormData({
-        productId: "",
-        quantity: 0,
-        unit: IUnit.TIYA,
-        preferredMarket: MarketNames.Charanci,
-      });
+      form.reset();
     }
   };
 
@@ -238,13 +180,7 @@ export default function Inventory() {
             pageCount={pagination.totalPages}
             pageIndex={pagination.currentPage - 1}
             pageSize={pagination.limit}
-            onPaginationChange={(p) =>
-              setPagination((prev) => ({
-                ...prev,
-                currentPage: p.pageIndex + 1,
-                limit: p.pageSize,
-              }))
-            }
+            onPaginationChange={(p) => fetchInventory(p.pageIndex + 1, p.pageSize)}
           />
         </CardContent>
       </Card>
@@ -311,79 +247,130 @@ export default function Inventory() {
             </DialogTitle>
             <DialogDescription>Add a new product to your inventory</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="add-productId">Product ID</Label>
-              <Input
-                id="add-productId"
-                placeholder="e.g. p001"
-                value={formData.productId}
-                onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-quantity">Quantity</Label>
-              <Input
-                id="add-quantity"
-                type="number"
-                placeholder="Enter quantity"
-                value={formData.quantity || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, quantity: Number(e.target.value) })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-unit">Unit</Label>
-              <Select
-                value={formData.unit}
-                onValueChange={(value) => setFormData({ ...formData, unit: value })}
-              >
-                <SelectTrigger id="add-unit">
-                  <SelectValue placeholder="Select unit" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(IUnit).map((unit) => (
-                    <SelectItem key={unit} value={unit}>
-                      {unit}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="add-market">Preferred Market</Label>
-              <Select
-                value={formData.preferredMarket}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, preferredMarket: value })
-                }
-              >
-                <SelectTrigger id="add-market">
-                  <SelectValue placeholder="Select market" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(MarketNames).map((market) => (
-                    <SelectItem key={market} value={market}>
-                      {market}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAdd}
-              className="bg-primary-venato hover:bg-primary-venato/90"
-              disabled={!formData.productId || formData.quantity <= 0}
-            >
-              Add Item
-            </Button>
-          </DialogFooter>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleAdd)}>
+              <div className="space-y-4 py-4">
+                <FormField
+                  control={form.control}
+                  name="preferredMarket"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Preferred Market</FormLabel>
+                      <FormControl>
+                        <InfiniteCombobox
+                          items={markets.map((m) => ({ value: m._id, label: m.name }))}
+                          value={field.value}
+                          onChange={handleMarketChange}
+                          onLoadMore={loadMoreMarkets}
+                          hasMore={marketPagination.hasNextPage}
+                          isLoading={isLoading}
+                          placeholder="Select market"
+                          searchPlaceholder="Search markets..."
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="productId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Product ID</FormLabel>
+                      <FormControl>
+                        <InfiniteCombobox
+                          items={products.map((p) => ({ value: p._id, label: p.name }))}
+                          value={field.value}
+                          onChange={(val) => form.setValue("productId", val, { shouldValidate: true })}
+                          onLoadMore={() => loadMoreProducts(watchPreferredMarket)}
+                          hasMore={productPagination.hasNextPage}
+                          isLoading={isLoading}
+                          placeholder={watchPreferredMarket ? "Select product" : "Select a market first"}
+                          searchPlaceholder="Search products..."
+                          disabled={!watchPreferredMarket}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {selectedProductData && (
+                  <div className="p-3 rounded-lg bg-primary-venato/5 border border-primary-venato/10 flex items-center justify-between animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center gap-2">
+                       <div className="p-1.5 rounded-md bg-primary-venato/10">
+                        <Package className="h-4 w-4 text-primary-venato" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground leading-none mb-1">Market Price</p>
+                        <p className="text-sm font-bold text-primary-venato">
+                          {new Intl.NumberFormat("en-NG", {
+                            style: "currency",
+                            currency: selectedProductData.market?.currency || "NGN",
+                            minimumFractionDigits: 0,
+                          }).format(selectedProductData.price)}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="bg-background/50 text-[10px] h-5">
+                      Base unit: {selectedProductData.unit}
+                    </Badge>
+                  </div>
+                )}
+                <FormField
+                  control={form.control}
+                  name="quantity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quantity</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="Enter quantity"
+                          {...field}
+                          onChange={(e) => field.onChange(Number(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="unit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Unit</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select unit" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Object.values(IUnit).map((unit) => (
+                            <SelectItem key={unit} value={unit}>
+                              {unit}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" className="bg-primary-venato hover:bg-primary-venato/90">
+                  Add Item
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 

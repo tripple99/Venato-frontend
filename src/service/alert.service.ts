@@ -1,4 +1,4 @@
-import type { ApiResponse } from "@/model/api";
+import type { ApiResponse ,PaginatedApiResponse} from "@/model/api";
 import apiClient from "@/api/api-client";
 import { handleAnyError } from "@/handlers/GlobalErrorHandler";
 import { toast } from "sonner";
@@ -10,9 +10,9 @@ class AlertService {
   /**
    * Fetches all alerts for the current user.
    */
-  public async getAlerts(params?: any): Promise<ApiResponse<Alert[]> | undefined> {
+  public async getAlerts(params?: any): Promise<PaginatedApiResponse<Alert> | undefined> {
     try {
-      const response = await apiClient.get<ApiResponse<Alert[]>>(this.baseUrl, { params });
+      const response = await apiClient.get<PaginatedApiResponse<Alert>>(this.baseUrl, { params });
       return response.data;
     } catch (error) {
       handleAnyError(error);

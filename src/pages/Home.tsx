@@ -1,26 +1,19 @@
-import React from 'react'
-import { Outlet } from 'react-router-dom'
 import Hero from '@/components/client/Hero'
 import Features from '@/components/client/Features'
-import Setup from '@/components/client/Setup'
 import About from '@/components/client/About'
 import Footer from '@/components/client/Footer'
 
 
 export default function Home() {
   return (
-
-    <div className='w-full'>
+    <div className='w-full bg-white overflow-hidden'>
       <section id="hero">
         <Hero />
       </section>
-      <section id="features">
+      <section id="features-section">
         <Features />
       </section>
-      <section id="setup">
-        <Setup />
-      </section>
-      <section id="contact-us">
+      <section id="cta">
         <About />
       </section>
       <section id="footer">

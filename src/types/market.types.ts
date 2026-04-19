@@ -1,9 +1,17 @@
-
 export enum IUnit {
   KG = "kg",
   LITRE = "litre",
   MUDU = "mudu",
   TIYA = "tiya",
+  TONNE = "tonne",
+}
+
+export enum UnitValue {
+  MUDU = 1.25,
+  TIYA = 0.125,
+  LITRE = 0.9,
+  KG = 1,
+  TONNE = 1000,
 }
 
 export enum ICategory {
@@ -31,6 +39,8 @@ export interface IMarketProduct {
   quantityAvailable?: number;
   description?: string;
   marketId: string;
+  image?: File[];
+  images?: string[];
 }
 
 // export type MarketNames = {

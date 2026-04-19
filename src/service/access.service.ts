@@ -2,7 +2,7 @@ import type { ApiResponse } from "@/model/api";
 import apiClient from "@/api/api-client";
 import { handleAnyError } from "@/handlers/GlobalErrorHandler";
 import { toast } from "sonner";
-import { AuthRole, AllowedMarkets } from "@/model/auth.model";
+import { AuthRole } from "@/model/auth.model";
 
 class AccessService {
   private baseUrl: string = "/access";

@@ -1,19 +1,12 @@
-export interface MarketLocation {
-  cordinates: {
-    longitude: string;
-    latitude: string;
-  };
-  state: string;
-  code: string;
-  LGA: string;
-}
+import {type ILocation } from "./market.model";
 
 export interface Market {
   _id: string;
   name: string;
   currency: string;
-  location: MarketLocation;
+  location: ILocation;
 }
+
 
 export interface Product {
   _id: string;
@@ -21,8 +14,10 @@ export interface Product {
   price: number;
   unit: string;
   category: string;
+  quantityAvailable:number;
   market: Market; 
   createdBy: string;
   updatedBy?: string;
   description?: string;
+  images?: string[];
 }

@@ -1,7 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DataTable } from "@/components/data-table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -35,113 +34,9 @@ import { type Products } from "@/types/products";
 import { IUnit, ICategory, MarketNames } from "@/types/market.types";
 import ProductView from "@/components/ui/prodcutView";
 import { useProductHook } from "./admin-hooks";
-import { toast } from "sonner";
 import { useAuthStore } from "@/store/authStore";
 import type { IMarketProduct } from "@/types/market.types";
-
-// Mock data
-// const mockProducts: Products[] = [
-//   {
-//     id: "p001",
-//     name: "Rice",
-//     price: 25000,
-//     unit: IUnit.TIYA,
-//     category: ICategory.Grains,
-//     market: MarketNames.Charanci,
-//     created_at: new Date("2025-12-01T10:00:00"),
-//     update_at: new Date("2025-12-01T10:00:00"),
-//   },
-//   {
-//     id: "p002",
-//     name: "Beans",
-//     price: 20000,
-//     unit: IUnit.TIYA,
-//     category: ICategory.LegumesAndNuts,
-//     market: MarketNames.Ajiwa,
-//     created_at: new Date("2025-12-02T09:30:00"),
-//     update_at: new Date("2025-12-02T09:30:00"),
-//   },
-//   {
-//     id: "p003",
-//     name: "Tomatoes",
-//     price: 5000,
-//     unit: IUnit.MUDU,
-//     category: ICategory.Vegetables,
-//     market: MarketNames.Charanci,
-//     created_at: new Date("2025-12-03T11:15:00"),
-//     update_at: new Date("2025-12-03T11:15:00"),
-//   },
-//   {
-//     id: "p004",
-//     name: "Onions",
-//     price: 4500,
-//     unit: IUnit.MUDU,
-//     category: ICategory.Vegetables,
-//     market: MarketNames.Dawanau,
-//     created_at: new Date("2025-12-04T08:45:00"),
-//     update_at: new Date("2025-12-04T08:45:00"),
-//   },
-//   {
-//     id: "p005",
-//     name: "Palm Oil",
-//     price: 1500,
-//     unit: IUnit.LITRE,
-//     category: ICategory.OilsAndSeeds,
-//     market: MarketNames.Ajiwa,
-//     created_at: new Date("2025-12-05T10:30:00"),
-//     update_at: new Date("2025-12-05T10:30:00"),
-//   },
-//   {
-//     id: "p006",
-//     name: "Vegetable Oil",
-//     price: 1200,
-//     unit: IUnit.LITRE,
-//     category: ICategory.OilsAndSeeds,
-//     market: MarketNames.Dawanau,
-//     created_at: new Date("2025-12-06T14:00:00"),
-//     update_at: new Date("2025-12-06T14:00:00"),
-//   },
-//   {
-//     id: "p007",
-//     name: "Sugar",
-//     price: 7000,
-//     unit: IUnit.TIYA,
-//     category: ICategory.Grains,
-//     market: MarketNames.Charanci,
-//     created_at: new Date("2025-12-07T12:20:00"),
-//     update_at: new Date("2025-12-07T12:20:00"),
-//   },
-//   {
-//     id: "p008",
-//     name: "Yam",
-//     price: 8000,
-//     unit: IUnit.TIYA,
-//     category: ICategory.RootsAndTubers,
-//     market: MarketNames.Ajiwa,
-//     created_at: new Date("2025-12-08T09:50:00"),
-//     update_at: new Date("2025-12-08T09:50:00"),
-//   },
-//   {
-//     id: "p009",
-//     name: "Mango",
-//     price: 4000,
-//     unit: IUnit.MUDU,
-//     category: ICategory.Fruits,
-//     market: MarketNames.Dawanau,
-//     created_at: new Date("2025-12-09T11:10:00"),
-//     update_at: new Date("2025-12-09T11:10:00"),
-//   },
-//   {
-//     id: "p010",
-//     name: "Groundnuts",
-//     price: 3000,
-//     unit: IUnit.TIYA,
-//     category: ICategory.LegumesAndNuts,
-//     market: MarketNames.Charanci,
-//     created_at: new Date("2025-12-10T10:05:00"),
-//     update_at: new Date("2025-12-10T10:05:00"),
-//   },
-// ];
+import { type ILocation } from "@/model/market.model";
 
 const formatPrice = (price: number) =>
   new Intl.NumberFormat("en-NG", {
@@ -150,25 +45,31 @@ const formatPrice = (price: number) =>
     minimumFractionDigits: 0,
   }).format(price);
 
+const initialLocation: ILocation = {
+  state: "",
+  code: "",
+  LGA: "",
+  country: "Nigeria",
+  coordinates: { longitude: "", latitude: "" }
+};
+
 const initialProductState: Products = {
   _id: "",
   name: "",
   price: 0,
   unit: IUnit.TIYA,
   category: ICategory.Grains,
+  quantityAvailable:0,
+  location: initialLocation,
   market: {
     name: MarketNames.Charanci,
     _id: "",
-    location: {
-      state: "",
-      code: "",
-      LGA: "",
-      cordinates: { longitude: "", latitude: "" }
-    }
+    location: initialLocation
   },
   created_at: new Date(),
   update_at: new Date(),
 };
+
 
 export default function Product() {
   const { user } = useAuthStore();
@@ -182,6 +83,8 @@ export default function Product() {
   const [editProduct, setEditProduct] = useState<Products | null>(null);
   const [formProduct, setFormProduct] = useState<Products>(initialProductState);
   const [selectedProduct, setSelectedProduct] = useState<Products | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   useEffect(() => {
     if (user?.userMarket && user.userMarket.length > 0) {
       fetchUserMarkets(user.userMarket);
@@ -375,24 +278,32 @@ export default function Product() {
         <ProductView
           productVal={formProduct}
           markets={markets}
+          isLoading={isSubmitting}
           onclose={() => {
             setProductViewOpen(false);
             setEditView(false);
             setEditProduct(null);
+            setIsSubmitting(false);
           }}
           addProductVal={async (product) => {
-            console.log(product);
             const marketProduct: IMarketProduct = {
               name: product.name,
               unit: product.unit,
               price: product.price,
               category: product.category,
               marketId: product.market._id,
+              quantityAvailable: product.quantityAvailable,
+              image: product.image,
             };
+            setIsSubmitting(true);
             const { success } = await createProduct(marketProduct);
             if (success) {
+              setIsSubmitting(false);
               setProductViewOpen(false);
+              return true;
             }
+            setIsSubmitting(false);
+            return false;
           }}
           editView={editView}
           editProduct={editProduct}
@@ -403,13 +314,18 @@ export default function Product() {
               price: product.price,
               category: product.category,
               marketId: product.market._id,
+              quantityAvailable: product.quantityAvailable,
+              images: product.images, // PRESERVE EXISTING IMAGES
+              image: product.image,  // ADD NEW IMAGES
             };
             const { success } = await updateProducts(product._id, marketProduct);
             if (success) {
               setProductViewOpen(false);
               setEditView(false);
               setEditProduct(null);
+              return true;
             }
+            return false;
           }}
         />
       )}
