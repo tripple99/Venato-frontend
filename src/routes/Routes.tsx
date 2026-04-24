@@ -31,6 +31,7 @@ import Alerts from "@/pages/User/Alerts";
 import SuperAdminDashboard from "@/pages/SuperAdmin/Dashboard";
 import MarketManagement from "@/pages/SuperAdmin/Market";
 import AccessControl from "@/pages/SuperAdmin/Access";
+import AuditLogs from "@/pages/SuperAdmin/AuditLogs";
 
 export const router  = createBrowserRouter([
  {
@@ -85,6 +86,7 @@ export const router  = createBrowserRouter([
       { index: true, element: <SuperAdminDashboard /> },
       { path: "market", element: <MarketManagement /> },
       { path: "access", element: <AccessControl /> },
+      { path: "audit-logs", element: <AuditLogs /> },
     ],
   },
   {

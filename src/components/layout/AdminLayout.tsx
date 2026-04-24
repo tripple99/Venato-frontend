@@ -107,6 +107,11 @@ const ROLE_CONFIG: Record<AuthRole, SidebarItem[]> = {
       icon: <ShieldCheck className="w-5 h-5" />,
       url: "/superadmin/access",
     },
+    {
+      title: "Audit Logs",
+      icon: <ClipboardList className="w-5 h-5" />,
+      url: "/superadmin/audit-logs",
+    },
   ],
 };
 
