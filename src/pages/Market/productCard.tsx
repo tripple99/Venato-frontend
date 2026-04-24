@@ -4,9 +4,7 @@ import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import type { Product } from "@/model/product.model";
 import { images } from "@/assets/images";
-import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMarketHook } from "./market-hook";
 import { toast } from "sonner";
 interface ProductCardProps {
   product: Product;

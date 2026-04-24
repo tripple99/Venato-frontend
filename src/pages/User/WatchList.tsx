@@ -26,78 +26,7 @@ import watchListService from "@/service/watch-list.service";
 import { toast } from "sonner";
 
 // Mock data for development
-const mockWatchlist: WatchList[] = [
-  {
-    _id: "wl-001",
-    user: "u001",
-    product: {
-      _id: "p001",
-      name: "Rice",
-      price: 25000,
-      category: "Grains",
-      marketId: "Charanci",
-      unit: "tiya",
-    },
-    createdAt: "2025-12-01T10:00:00Z",
-    updatedAt: "2025-12-01T10:00:00Z",
-  },
-  {
-    _id: "wl-002",
-    user: "u001",
-    product: {
-      _id: "p002",
-      name: "Beans",
-      price: 20000,
-      category: "Legumes",
-      marketId: "Ajiwa",
-      unit: "tiya",
-    },
-    createdAt: "2025-12-02T09:30:00Z",
-    updatedAt: "2025-12-02T09:30:00Z",
-  },
-  {
-    _id: "wl-003",
-    user: "u001",
-    product: {
-      _id: "p005",
-      name: "Palm Oil",
-      price: 1500,
-      category: "Oils & Seeds",
-      marketId: "Dawanau",
-      unit: "litre",
-    },
-    createdAt: "2025-12-05T10:30:00Z",
-    updatedAt: "2025-12-05T10:30:00Z",
-  },
-  {
-    _id: "wl-004",
-    user: "u001",
-    product: {
-      _id: "p003",
-      name: "Tomatoes",
-      price: 5000,
-      category: "Vegetables",
-      marketId: "Charanci",
-      unit: "mudu",
-    },
-    createdAt: "2025-12-03T11:15:00Z",
-    updatedAt: "2025-12-03T11:15:00Z",
-  },
-  {
-    _id: "wl-005",
-    user: "u001",
-    product: {
-      _id: "p010",
-      name: "Groundnuts",
-      price: 3000,
-      category: "Legumes",
-      marketId: "Charanci",
-      unit: "tiya",
-    },
-    createdAt: "2025-12-10T10:05:00Z",
-    updatedAt: "2025-12-10T10:05:00Z",
-  },
-];
+
 
 const formatPrice = (price: number) =>
   new Intl.NumberFormat("en-NG", {
@@ -122,10 +51,10 @@ export default function WatchList() {
         if (response?.payload) {
           setItems(response.payload.data);
         } else {
-          setItems(mockWatchlist);
+          setItems([]);
         }
       } catch {
-        setItems(mockWatchlist);
+        setItems([]);
       } finally {
         setIsLoading(false);
       }

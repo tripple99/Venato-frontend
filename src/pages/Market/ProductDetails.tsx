@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { MapPin, ArrowLeft, ShieldCheck, Tag, Weight, Store } from "lucide-react";
+import { MapPin, ArrowLeft, ShieldCheck, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { images } from "@/assets/images";
 import productService from "@/service/product.service";

@@ -39,9 +39,9 @@ export const createWatchlistColumns = (
     ),
   },
   {
-    accessorKey: "product.marketId",
+    accessorKey: "product.market.name",
     header: "Market",
-    accessorFn: (row) => row.product?.marketId || "N/A",
+    accessorFn: (row) => row.product?.market?.name || "N/A",
     cell: ({ row }) => (
       <span>{row.original.product?.market?.name || "N/A"}</span>
     ),
