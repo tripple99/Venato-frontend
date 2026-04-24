@@ -4,43 +4,34 @@
  * A production-grade, centralised error boundary that classifies every
  * error the application can surface and routes it to the correct toast
  * via the existing useNotifier hook.
- */
-
-
-/**
- * globalErrorHandler.ts
- *
- * A production-grade, centralised error boundary that classifies every
- * error the application can surface and routes it to the correct toast
- * via the existing useNotifier hook.
  *
  * Usage
  * -----
- * import { initGlobalErrorHandler } from "./globalErrorHandler";
- * import { useNotifier }            from "./useNotifier";   // your existing hook
+ *   import { initGlobalErrorHandler } from "./globalErrorHandler";
+ *   import { useNotifier }            from "./useNotifier";   // your existing hook
  *
- * // In your App root (called once, after the Toaster provider is mounted)
- * const notifier = useNotifier();
- * useEffect(() => {
- * const teardown = initGlobalErrorHandler(notifier);
- * return teardown;   // cleans up listeners on unmount
- * }, []);
+ *   // In your App root (called once, after the Toaster provider is mounted)
+ *   const notifier = useNotifier();
+ *   useEffect(() => {
+ *     const teardown = initGlobalErrorHandler(notifier);
+ *     return teardown;   // cleans up listeners on unmount
+ *   }, []);
  *
  * Design decisions
  * ----------------
  * 1.  Classification is done via a priority-ordered chain so the *most
- * specific* category wins.  Adding a new category means adding one
- * entry to ERROR_CLASSIFIERS – nothing else changes.
+ *     specific* category wins.  Adding a new category means adding one
+ *     entry to ERROR_CLASSIFIERS – nothing else changes.
  * 2.  Every unhandled promise rejection and uncaught window error is
- * captured so nothing slips through silently in production.
+ *     captured so nothing slips through silently in production.
  * 3.  Duplicate suppression: identical error messages shown within a
- * short window (DEDUP_WINDOW_MS) are swallowed to avoid toast spam
- * caused by retry storms or re-renders.
+ *     short window (DEDUP_WINDOW_MS) are swallowed to avoid toast spam
+ *     caused by retry storms or re-renders.
  * 4.  Dev-only stack traces are forwarded to the console; in production
- * only the classified user-facing message is surfaced.
+ *     only the classified user-facing message is surfaced.
  */
 
-import { useNotifier } from "./NotificationService"; // ← adjust path if needed
+import { useNotifier } from "./NotificationService";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -51,7 +42,7 @@ export type ErrorCategory =
   | "AUTH"            // 401 / token expired / session invalid
   | "FORBIDDEN"       // 403 – authenticated but not authorised
   | "NOT_FOUND"       // 404
-  | "VALIDATION"      // 422 / 400 field-level errors from the API
+  | "VALIDATION"      // 422 / field-level errors from the API
   | "RATE_LIMIT"      // 429
   | "SERVER"          // 5xx
   | "NETWORK"         // fetch / XHR failed – no response at all
@@ -61,10 +52,10 @@ export type ErrorCategory =
 
 /**
  * The shape every classifier must satisfy.
- * match  – returns true when it "owns" this error.
- * category – the tag attached to the match.
- * message  – the human-readable string the user will see.
- * Receives the raw error so you can cherry-pick details.
+ *   match  – returns true when it "owns" this error.
+ *   category – the tag attached to the match.
+ *   message  – the human-readable string the user will see.
+ *              Receives the raw error so you can cherry-pick details.
  */
 interface ErrorClassifier {
   category: ErrorCategory;
@@ -95,8 +86,8 @@ const ERROR_CLASSIFIERS: ErrorClassifier[] = [
     match: (e) =>
       hasStatus(e, 403) ||
       matchesMessage(e, /forbidden|unauthori[sz]ed/i),
-    message: () =>
-      "You don't have permission to perform this action.",
+    message: (e) =>
+      extractApiMessage(e) || "You don't have permission to perform this action.",
   },
 
   // ── Not Found ───────────────────────────────────────────────────────────
@@ -106,14 +97,13 @@ const ERROR_CLASSIFIERS: ErrorClassifier[] = [
       hasStatus(e, 404) ||
       matchesMessage(e, /not found/i),
     message: (e) => {
-      // If the API returns a descriptive error in the 'errors' array, use it
-      const fields = extractFieldErrors(e);
-      if (fields.length) return fields[0];
-
       const resource = extractResourceName(e);
-      return resource
-        ? `${resource} could not be found.`
-        : "The requested resource could not be found.";
+      if (resource) return `${resource} could not be found.`;
+
+      const apiMsg = extractApiMessage(e);
+      if (apiMsg) return apiMsg;
+
+      return "The requested resource could not be found.";
     },
   },
 
@@ -285,9 +275,9 @@ export function initGlobalErrorHandler(): () => void {
  * The single entry-point every other layer in the app should call when
  * it catches an error it cannot recover from locally.
  *
- * import { handleAnyError } from "./globalErrorHandler";
+ *   import { handleAnyError } from "./globalErrorHandler";
  *
- * try { … } catch (err) { handleAnyError(err); }
+ *   try { … } catch (err) { handleAnyError(err); }
  */
 export function handleAnyError(error: unknown, notifier?: Notifier): void {
   const classified = classifyError(error);
@@ -328,8 +318,8 @@ let _globalNotifier: Notifier | null = null;
  * Call this inside your App component *before* initGlobalErrorHandler
  * so the singleton is wired up.
  *
- * setGlobalNotifier(notifier);
- * initGlobalErrorHandler(notifier);
+ *   setGlobalNotifier(notifier);
+ *   initGlobalErrorHandler(notifier);
  */
 export function setGlobalNotifier(notifier: Notifier): void {
   _globalNotifier = notifier;
@@ -353,22 +343,13 @@ function getOrWarnNotifier(): Notifier | null {
 function extractStatus(e: unknown): number | null {
   if (e && typeof e === "object") {
     const obj = e as Record<string, unknown>;
-
     // Axios wraps it under response.status
     if (obj.response && typeof obj.response === "object") {
-      const response = obj.response as Record<string, unknown>;
-      if (typeof response.status === "number") return response.status;
-
-      // Fallback for custom formats where the data contains a statusCode
-      if (response.data && typeof response.data === "object") {
-        const dataStatus = (response.data as Record<string, unknown>).statusCode;
-        if (typeof dataStatus === "number") return dataStatus;
-      }
+      const status = (obj.response as Record<string, unknown>).status;
+      if (typeof status === "number") return status;
     }
-
-    // Direct {status} or {statusCode} (e.g. manually constructed error or parsed response)
+    // Direct {status} (e.g. a manually constructed error)
     if (typeof obj.status === "number") return obj.status;
-    if (typeof obj.statusCode === "number") return obj.statusCode;
   }
   return null;
 }
@@ -381,20 +362,13 @@ function hasStatus(e: unknown, code: number): boolean {
 function extractApiMessage(e: unknown): string | null {
   if (e && typeof e === "object") {
     const obj = e as Record<string, unknown>;
-
-    // Parse Axios standard response shapes
     if (obj.response && typeof obj.response === "object") {
       const data = (obj.response as Record<string, unknown>).data;
       if (data && typeof data === "object") {
         const msg = (data as Record<string, unknown>).message;
-        // NestJS often returns an array of messages here, handling that logic is moved to field errors
-        // If it's a direct string, return it
         if (typeof msg === "string" && msg) return msg;
       }
     }
-
-    // Direct error object fallback
-    if (typeof obj.message === "string" && obj.message) return obj.message;
   }
   return null;
 }
@@ -444,6 +418,8 @@ function isNetworkError(e: unknown): boolean {
 }
 
 // ── Validation field errors ───────────────────────────────────────────────
+// Expects the common API shape: { errors: { fieldName: ["msg", …], … } }
+
 function hasFieldErrors(e: unknown): boolean {
   return extractFieldErrors(e).length > 0;
 }
@@ -455,6 +431,7 @@ function extractFieldErrors(e: unknown): string[] {
   const dataObj = data as Record<string, unknown>;
 
   // Format 1: payload: [ { path: string, message: string }, ... ]
+  // This is used by the new AI endpoints
   if (Array.isArray(dataObj.payload)) {
     return (dataObj.payload as unknown[])
       .filter(
@@ -469,18 +446,12 @@ function extractFieldErrors(e: unknown): string[] {
       .map((err) => `${capitalise(err.path)}: ${err.message}`);
   }
 
+  // Format 2: errors: { fieldName: ["msg", ...], ... }
+  // Legacy format or standard Laravel-style errors
   const errors = dataObj.errors;
-
-  // Format 2: errors: ["msg1", "msg2"] (NestJS default ValidationPipe format)
-  if (Array.isArray(errors)) {
-    return errors
-      .filter((err): err is string => typeof err === "string")
-      .map((err) => capitalise(err));
-  }
-
-  // Format 3: errors: { fieldName: ["msg", ...], ... } (Laravel-style)
   if (!errors || typeof errors !== "object") return [];
 
+  // Flatten { field: ["msg"] } → ["Field: msg", …]
   return Object.entries(errors as Record<string, unknown>).flatMap(
     ([field, messages]) => {
       const msgs = Array.isArray(messages) ? messages : [messages];
@@ -493,20 +464,15 @@ function extractFieldErrors(e: unknown): string[] {
 
 function extractResponseData(e: unknown): unknown | null {
   if (e && typeof e === "object") {
-    // Check if the error object itself IS the response payload
-    if ("statusCode" in e || "success" in e) {
-        return e;
-    }
-
     const resp = (e as Record<string, unknown>).response;
-    if (resp && typeof resp === "object") {
-        return (resp as Record<string, unknown>).data;
-    }
+    if (resp && typeof resp === "object") return (resp as Record<string, unknown>).data;
   }
   return null;
 }
 
 // ── Resource name from 404 payloads ───────────────────────────────────────
+// Expects: { resource: "User" } or { message: "User not found" }
+
 function extractResourceName(e: unknown): string | null {
   const data = extractResponseData(e);
   if (data && typeof data === "object") {
@@ -524,6 +490,5 @@ function extractResourceName(e: unknown): string | null {
 
 // ── Micro-utilities ────────────────────────────────────────────────────────
 function capitalise(s: string): string {
-  if (!s) return "";
   return s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, " ");
 }

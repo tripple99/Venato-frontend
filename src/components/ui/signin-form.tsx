@@ -14,7 +14,7 @@ import {Input} from "@/components/ui/input"
 import {signUpSchema} from "@/pages/auths/schema"
 import {zodResolver} from "@hookform/resolvers/zod"
 import {useForm} from "react-hook-form"
-import toast from "react-hot-toast"
+import { toast } from "sonner"
 import {z} from "zod"
 import authService from "@/service/auth.service"
 

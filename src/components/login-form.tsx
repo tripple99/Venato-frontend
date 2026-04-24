@@ -13,7 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { loginSchema, type Login } from "@/pages/auths/schema"
 import authService from "@/service/auth.service"
-import toast from "react-hot-toast"
+import { toast } from "sonner"
 
 export function LoginForm({
   className,
