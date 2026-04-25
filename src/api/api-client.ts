@@ -2,7 +2,7 @@ import axios, { type AxiosInstance, type AxiosResponse } from "axios";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/authStore";
 // Environment-based API URL configuration
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
 
 // Debug logging for API configuration
 if (import.meta.env.VITE_DEBUG === "true" || import.meta.env.DEV) {
