@@ -13,7 +13,7 @@ if (import.meta.env.VITE_DEBUG === "true" || import.meta.env.DEV) {
     isProd: import.meta.env.PROD,
   });
 }
-
+   
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
