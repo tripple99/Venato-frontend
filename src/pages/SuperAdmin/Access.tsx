@@ -19,6 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,6 +49,7 @@ import {
   MapPin,
   Calendar,
   Activity,
+  UserPlus,
 } from "lucide-react";
 import { createAccessColumns } from "./columns/access-columns";
 import type { IProfile } from "@/model/user.model";
@@ -65,7 +67,17 @@ const accessSchema = z.object({
   return true;
 }, { message: "Selection is required" });
 
+const inviteSchema = z.object({
+  fullname: z.string().min(2, { message: "Fullname must be at least 2 characters" }),
+  email: z.string().email({ message: "Invalid email address" }),
+  role: z.nativeEnum(AuthRole).refine(
+    (val) => val === AuthRole.Admin || val === AuthRole.superAdmin,
+    { message: "Role must be admin or superadmin" }
+  ),
+});
+
 type AccessFormValues = z.infer<typeof accessSchema>;
+type InviteFormValues = z.infer<typeof inviteSchema>;
 
 
 export default function AccessControl() {
@@ -82,12 +94,14 @@ export default function AccessControl() {
     markets,
     marketPagination,
     loadMoreMarkets,
+    inviteAdminUser,
   } = useAccessControlHook();
 
   const [selectedUser, setSelectedUser] = useState<IAuth | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [grantOpen, setGrantOpen] = useState(false);
   const [revokeOpen, setRevokeOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [userToRevoke, setUserToRevoke] = useState<IAuth | null>(null);
 
   const form = useForm<AccessFormValues>({
@@ -96,6 +110,15 @@ export default function AccessControl() {
       grantType: "role",
       grantRole: AuthRole.User,
       grantMarket: "",
+    },
+  });
+
+  const inviteForm = useForm<InviteFormValues>({
+    resolver: zodResolver(inviteSchema),
+    defaultValues: {
+      fullname: "",
+      email: "",
+      role: AuthRole.Admin,
     },
   });
 
@@ -168,6 +191,14 @@ export default function AccessControl() {
     }
   };
 
+  const handleInviteSubmit = async (data: InviteFormValues) => {
+    const { success } = await inviteAdminUser(data.email, data.fullname, data.role);
+    if (success) {
+      setInviteOpen(false);
+      inviteForm.reset();
+    }
+  };
+
   const columns = useMemo(
     () => createAccessColumns(handleView, handleGrantRole, handleRevokeClick),
     []
@@ -179,14 +210,20 @@ export default function AccessControl() {
   return (
     <div className="p-4 lg:p-6 space-y-6 animate-in fade-in duration-500">
       {/* Page Header */}
-      <div className="space-y-1">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
-          <ShieldCheck className="h-7 w-7 text-primary-venato" />
-          Access Control
-        </h1>
-        <p className="text-muted-foreground">
-          Manage user roles and system permissions.
-        </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <ShieldCheck className="h-7 w-7 text-primary-venato" />
+            Access Control
+          </h1>
+          <p className="text-muted-foreground">
+            Manage user roles and system permissions.
+          </p>
+        </div>
+        <Button onClick={() => setInviteOpen(true)} className="bg-primary-venato hover:bg-primary-venato/90 flex items-center gap-2">
+          <UserPlus className="h-4 w-4" />
+          Create Admin
+        </Button>
       </div>
 
       {/* KPI Strip */}
@@ -469,6 +506,86 @@ export default function AccessControl() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create Admin Dialog */}
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5 text-primary-venato" />
+              Create Admin
+            </DialogTitle>
+            <DialogDescription>
+              Invite a new admin or superadmin to the system.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...inviteForm}>
+            <form onSubmit={inviteForm.handleSubmit(handleInviteSubmit)}>
+              <div className="space-y-4 py-4">
+                <FormField
+                  control={inviteForm.control}
+                  name="fullname"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Full Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="John Doe" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={inviteForm.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email Address</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="admin@example.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={inviteForm.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Role</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a role" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value={AuthRole.Admin}>Admin</SelectItem>
+                   
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-primary-venato hover:bg-primary-venato/90"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Inviting..." : "Send Invite"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -137,6 +137,22 @@ export const useAccessControlHook = () => {
     }
   };
 
+  const inviteAdminUser = async (email: string, fullname: string, role: AuthRole) => {
+    try {
+      setIsLoading(true);
+      await accessControlService.inviteAdminUser(email, fullname, role);
+      toast.success("Admin user successfully invited. An email has been sent.");
+      fetchUsers(pagination.page, pagination.limit);
+      return { success: true };
+    } catch (error) {
+      console.error("Failed to invite admin user:", error);
+      toast.error("Failed to invite user. Please try again.");
+      return { success: false };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     users,
     isLoading,
@@ -150,5 +166,6 @@ export const useAccessControlHook = () => {
     grantRoleAccess,
     grantMarketAccess,
     revokeAccess,
+    inviteAdminUser,
   };
 };

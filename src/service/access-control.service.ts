@@ -2,6 +2,7 @@ import type { PaginatedApiResponse } from "@/model/api";
 import apiClient from "@/api/api-client";
 import { handleAnyError } from "@/handlers/GlobalErrorHandler";
 import type { IProfile } from "@/model/user.model";
+import { AuthRole } from "@/model/auth.model";
 
 
 class AccessControlService {
@@ -10,6 +11,20 @@ class AccessControlService {
         try {
             const response = await apiClient.get<PaginatedApiResponse<IProfile>>(this.baseUrl, {
               params: { page, limit },
+            });
+            return response.data;
+        } catch (error) {
+            handleAnyError(error);
+            throw error;
+        }
+    }
+
+    public async inviteAdminUser(email: string, fullname: string, role: AuthRole): Promise<IProfile> {
+        try {
+            const response = await apiClient.post<IProfile>("/admin/users", {
+                email,
+                fullname,
+                role
             });
             return response.data;
         } catch (error) {
