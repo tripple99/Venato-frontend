@@ -602,7 +602,8 @@ export default function AccessControl() {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value={AuthRole.Admin}>Admin</SelectItem>
-                   
+                            <SelectItem value={AuthRole.User}>User</SelectItem>
+
                         </SelectContent>
                       </Select>
                       <FormMessage />
