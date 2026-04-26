@@ -7,15 +7,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
-  Bell,
   ClipboardList,
   Package,
   ShieldCheck,
@@ -115,8 +108,9 @@ const ROLE_CONFIG: Record<AuthRole, SidebarItem[]> = {
   ],
 };
 
+import NotificationsDropdown from "./NotificationsDropdown";
+
 export default function AdminLayout() {
-  const [notifications] = useState(5);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logOutModal, setLogOutModal] = useState(false);
@@ -418,25 +412,7 @@ export default function AdminLayout() {
               {/* Theme Toggle */}
               <ThemeToggle />
 
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-2xl relative"
-                    >
-                      <Bell className="h-5 w-5" />
-                      {notifications > 0 && (
-                        <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
-                          {notifications}
-                        </span>
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Notifications</TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <NotificationsDropdown />
 
               <DropdownMenu>
                 <DropdownMenuTrigger className="focus:outline-none">
