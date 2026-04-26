@@ -171,6 +171,22 @@ export const useAccessControlHook = () => {
     }
   }, []);
 
+  const deleteUserAccount = useCallback(async (uid: string) => {
+    try {
+      setIsLoading(true);
+      await accessControlService.deleteUser(uid);
+      setUsers((prev) => prev.filter((u) => u._id !== uid));
+      toast.success("User successfully deleted");
+      return { success: true };
+    } catch (error) {
+      console.error("Failed to delete user:", error);
+      toast.error("Failed to delete user. Please try again.");
+      return { success: false };
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return {
     users,
     isLoading,
@@ -186,5 +202,6 @@ export const useAccessControlHook = () => {
     revokeAccess,
     inviteAdminUser,
     verifyUser,
+    deleteUserAccount,
   };
 };

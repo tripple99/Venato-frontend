@@ -96,6 +96,7 @@ export default function AccessControl() {
     loadMoreMarkets,
     inviteAdminUser,
     verifyUser,
+    deleteUserAccount,
   } = useAccessControlHook();
 
   const [selectedUser, setSelectedUser] = useState<IAuth | null>(null);
@@ -104,8 +105,10 @@ export default function AccessControl() {
   const [revokeOpen, setRevokeOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [userToRevoke, setUserToRevoke] = useState<IAuth | null>(null);
   const [userToVerify, setUserToVerify] = useState<IProfile | null>(null);
+  const [userToDelete, setUserToDelete] = useState<IProfile | null>(null);
 
   const form = useForm<AccessFormValues>({
     resolver: zodResolver(accessSchema),
@@ -216,9 +219,23 @@ export default function AccessControl() {
     }
   };
 
+  const handleDelete = useCallback((user: IProfile) => {
+    setUserToDelete(user);
+    setDeleteOpen(true);
+  }, []);
+
+  const handleDeleteConfirm = async () => {
+    if (!userToDelete) return;
+    const { success } = await deleteUserAccount(userToDelete._id);
+    if (success) {
+      setDeleteOpen(false);
+      setUserToDelete(null);
+    }
+  };
+
   const columns = useMemo(
-    () => createAccessColumns(handleView, handleGrantRole, handleRevokeClick, handleVerify),
-    [handleView, handleGrantRole, handleRevokeClick, handleVerify]
+    () => createAccessColumns(handleView, handleGrantRole, handleRevokeClick, handleVerify, handleDelete),
+    [handleView, handleGrantRole, handleRevokeClick, handleVerify, handleDelete]
   );
 
   const adminCount = users.filter((u: any) => u.userRole === "admin" || u.userRole === "superadmin").length;
@@ -542,6 +559,29 @@ export default function AccessControl() {
               disabled={isLoading}
             >
               {isLoading ? "Verifying..." : "Verify Account"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-600">Delete User Account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{userToDelete?.fullname}"? This action is permanent
+              and will remove all their data from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={handleDeleteConfirm}
+              disabled={isLoading}
+            >
+              {isLoading ? "Deleting..." : "Delete Permanently"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

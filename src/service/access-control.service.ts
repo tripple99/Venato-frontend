@@ -42,6 +42,16 @@ class AccessControlService {
             throw error;
         }
     }
+
+    public async deleteUser(uid: string): Promise<any> {
+        try {
+            const response = await apiClient.delete<any>(`/admin/users/${uid}`);
+            return response.data;
+        } catch (error) {
+            handleAnyError(error);
+            throw error;
+        }
+    }
 }
 
 
