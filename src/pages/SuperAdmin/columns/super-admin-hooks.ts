@@ -153,6 +153,24 @@ export const useAccessControlHook = () => {
     }
   };
 
+  const verifyUser = useCallback(async (uid: string) => {
+    try {
+      setIsLoading(true);
+      await accessControlService.verifyUser(uid);
+      setUsers((prev) =>
+        prev.map((u) => (u._id === uid ? { ...u, isVerified: true } : u))
+      );
+      toast.success("User verified successfully");
+      return { success: true };
+    } catch (error) {
+      console.error("Failed to verify user:", error);
+      toast.error("Failed to verify user. Please try again.");
+      return { success: false };
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   return {
     users,
     isLoading,
@@ -167,5 +185,6 @@ export const useAccessControlHook = () => {
     grantMarketAccess,
     revokeAccess,
     inviteAdminUser,
+    verifyUser,
   };
 };

@@ -95,6 +95,7 @@ export default function AccessControl() {
     marketPagination,
     loadMoreMarkets,
     inviteAdminUser,
+    verifyUser,
   } = useAccessControlHook();
 
   const [selectedUser, setSelectedUser] = useState<IAuth | null>(null);
@@ -102,7 +103,9 @@ export default function AccessControl() {
   const [grantOpen, setGrantOpen] = useState(false);
   const [revokeOpen, setRevokeOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [verifyOpen, setVerifyOpen] = useState(false);
   const [userToRevoke, setUserToRevoke] = useState<IAuth | null>(null);
+  const [userToVerify, setUserToVerify] = useState<IProfile | null>(null);
 
   const form = useForm<AccessFormValues>({
     resolver: zodResolver(accessSchema),
@@ -144,12 +147,12 @@ export default function AccessControl() {
     if (node) observer.current.observe(node);
   }, [marketPagination.isLoading, marketPagination.hasNextPage, loadMoreMarkets]);
 
-  const handleView = (user: IProfile) => {
+  const handleView = useCallback((user: IProfile) => {
     setSelectedUser(user);
     setViewOpen(true);
-  };
+  }, []);
 
-  const handleGrantRole = (user: IProfile) => {
+  const handleGrantRole = useCallback((user: IProfile) => {
     setSelectedUser(user);
     form.reset({
       grantType: "role",
@@ -157,12 +160,12 @@ export default function AccessControl() {
       grantMarket: "",
     });
     setGrantOpen(true);
-  };
+  }, [form]);
 
-  const handleRevokeClick = (user: IProfile) => {
+  const handleRevokeClick = useCallback((user: IProfile) => {
     setUserToRevoke(user);
     setRevokeOpen(true);
-  };
+  }, []);
 
   const handleGrantSubmit = async (data: AccessFormValues) => {
     if (!selectedUser) return;
@@ -199,9 +202,23 @@ export default function AccessControl() {
     }
   };
 
+  const handleVerify = useCallback((user: IProfile) => {
+    setUserToVerify(user);
+    setVerifyOpen(true);
+  }, []);
+
+  const handleVerifyConfirm = async () => {
+    if (!userToVerify) return;
+    const { success } = await verifyUser(userToVerify._id);
+    if (success) {
+      setVerifyOpen(false);
+      setUserToVerify(null);
+    }
+  };
+
   const columns = useMemo(
-    () => createAccessColumns(handleView, handleGrantRole, handleRevokeClick),
-    []
+    () => createAccessColumns(handleView, handleGrantRole, handleRevokeClick, handleVerify),
+    [handleView, handleGrantRole, handleRevokeClick, handleVerify]
   );
 
   const adminCount = users.filter((u: any) => u.userRole === "admin" || u.userRole === "superadmin").length;
@@ -502,6 +519,29 @@ export default function AccessControl() {
               onClick={handleRevokeConfirm}
             >
               Revoke Access
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Verify Confirmation */}
+      <AlertDialog open={verifyOpen} onOpenChange={setVerifyOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Verify user account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to verify "{userToVerify?.fullname}"? This will allow them
+              to access the system and perform assigned actions.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-primary-venato hover:bg-primary-venato/90"
+              onClick={handleVerifyConfirm}
+              disabled={isLoading}
+            >
+              {isLoading ? "Verifying..." : "Verify Account"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

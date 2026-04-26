@@ -32,6 +32,16 @@ class AccessControlService {
             throw error;
         }
     }
+
+    public async verifyUser(uid: string): Promise<any> {
+        try {
+            const response = await apiClient.patch<any>(`/admin/verify/${uid}`);
+            return response.data;
+        } catch (error) {
+            handleAnyError(error);
+            throw error;
+        }
+    }
 }
 
 

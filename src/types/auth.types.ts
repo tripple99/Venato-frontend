@@ -29,6 +29,7 @@ export interface IAuth{
     sessionToken:string | null,
     refreshToken:string | null,
     isActive?: boolean;
+    isVerified?: boolean;
     lastActive?: Date;
     provider:OauthProvider;
 }

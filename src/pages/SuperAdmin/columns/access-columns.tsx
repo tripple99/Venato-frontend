@@ -2,13 +2,14 @@ import { type ColumnDef } from "@tanstack/react-table";
 import type { IProfile } from "@/model/user.model";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Eye, Shield, ShieldOff } from "lucide-react";
+import { Eye, Shield, ShieldOff, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export const createAccessColumns = (
   onView: (user: IProfile) => void,
   onGrantRole: (user: IProfile) => void,
-  onRevoke: (user: IProfile) => void
+  onRevoke: (user: IProfile) => void,
+  onVerify: (user: IProfile) => void
 ): ColumnDef<IProfile>[] => [
   {
     accessorKey: "fullname",
@@ -142,6 +143,17 @@ export const createAccessColumns = (
         >
           <ShieldOff className="h-4 w-4" />
         </Button>
+        {!row.original.isVerified && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 hover:text-blue-600 text-blue-500"
+            onClick={() => onVerify(row.original)}
+            title="Verify User"
+          >
+            <UserCheck className="h-4 w-4" />
+          </Button>
+        )}
       </div>
     ),
   },
