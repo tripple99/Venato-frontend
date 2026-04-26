@@ -7,7 +7,7 @@ import { AuthRole} from "@/model/auth.model";
 import marketService from "@/service/market.service";
 import type { IMarketData } from "@/model/market.model";
 import type { IUserStats } from "./audit-log-hooks";
-
+import { useAuthStore } from "@/store/authStore";
 export const useAccessControlHook = () => {
   const [users, setUsers] = useState<IProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,6 +88,12 @@ export const useAccessControlHook = () => {
     try {
       setIsLoading(true);
       await accessService.grantUserRole(uid, grantRole);
+      if (useAuthStore.getState().user?._id === uid) {
+        useAuthStore.getState().updateUser({
+          roles: grantRole,
+          userRole: grantRole,
+        });
+      }
       setUsers((prev) =>
         prev.map((u) => (u._id === uid ? { ...u, roles: grantRole, userRole: grantRole } : u))
       );
@@ -106,6 +112,15 @@ export const useAccessControlHook = () => {
     try {
       setIsLoading(true);
       await accessService.grantMarketAccess(uid, grantMarket);
+      const currentUser = useAuthStore.getState().user;
+      if (currentUser?._id === uid) {
+        const allowedMarkets = Array.isArray(currentUser.allowedMarkets)
+          ? Array.from(new Set([...currentUser.allowedMarkets, grantMarket]))
+          : [grantMarket];
+        useAuthStore.getState().updateUser({
+          allowedMarkets,
+        });
+      }
       setUsers((prev) =>
         prev.map((u) =>
           u._id === uid
