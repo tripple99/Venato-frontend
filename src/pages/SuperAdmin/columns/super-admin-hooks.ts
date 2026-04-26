@@ -6,16 +6,23 @@ import type { IProfile } from "@/model/user.model";
 import { AuthRole} from "@/model/auth.model";
 import marketService from "@/service/market.service";
 import type { IMarketData } from "@/model/market.model";
+import type { IUserStats } from "./audit-log-hooks";
+
 export const useAccessControlHook = () => {
   const [users, setUsers] = useState<IProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+    const [stats,setStats] = useState<IUserStats>({
+    activeUsers: 0,
+    verifiedUsers: 0,
+    adminUsers: 0,
+  })
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 20,
     totalCount: 0,
     totalPages: 1,
     hasPreviousPage: false,
-    hasNextPage: false,
+    hasNextPage: false, 
   });
   const [markets, setMarkets] = useState<IMarketData[]>([]);
   const [marketPagination, setMarketPagination] = useState({
@@ -36,6 +43,9 @@ export const useAccessControlHook = () => {
           hasNextPage: response.payload.hasNextPage,
           hasPreviousPage: response.payload.hasPreviousPage,
         });
+        if(response.payload.stats){
+        setStats(response.payload.stats)
+        }
       }
     } catch (error) {
       console.error("Failed to fetch users:", error);
@@ -203,5 +213,6 @@ export const useAccessControlHook = () => {
     inviteAdminUser,
     verifyUser,
     deleteUserAccount,
+    stats,
   };
 };

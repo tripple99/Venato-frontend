@@ -97,6 +97,7 @@ export default function AccessControl() {
     inviteAdminUser,
     verifyUser,
     deleteUserAccount,
+    stats,
   } = useAccessControlHook();
 
   const [selectedUser, setSelectedUser] = useState<IAuth | null>(null);
@@ -238,8 +239,8 @@ export default function AccessControl() {
     [handleView, handleGrantRole, handleRevokeClick, handleVerify, handleDelete]
   );
 
-  const adminCount = users.filter((u: any) => u.userRole === "admin" || u.userRole === "superadmin").length;
-  const activeCount = users.filter((u: any) => u.isActive === true).length;
+  const adminCount = stats.adminUsers;
+  const activeCount = stats.activeUsers;
 
   return (
     <div className="p-4 lg:p-6 space-y-6 animate-in fade-in duration-500">
@@ -269,7 +270,18 @@ export default function AccessControl() {
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Users</p>
-              <p className="text-2xl font-bold">{pagination.totalCount || users.length}</p>
+              <p className="text-2xl font-bold">{pagination.totalCount }</p>
+            </div>
+          </CardContent>
+        </Card>
+         <Card className="border-border/50">
+          <CardContent className="flex items-center gap-3 p-4">
+            <div className="p-2 rounded-lg bg-primary-venato/10">
+              <User className="h-5 w-5 text-primary-venato" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Verified Users</p>
+              <p className="text-2xl font-bold">{stats.verifiedUsers }</p>
             </div>
           </CardContent>
         </Card>

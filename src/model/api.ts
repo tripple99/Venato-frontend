@@ -1,3 +1,5 @@
+import type { IUserStats } from "@/pages/SuperAdmin/columns/audit-log-hooks";
+
 export interface ApiResponse<T> {
     status: string;
     message: string;
@@ -12,6 +14,7 @@ export interface PaginatedResponse<T> {
     totalPages: number;
     hasNextPage: boolean;
     hasPreviousPage: boolean;
+    stats?: IUserStats;
 }
 
 export type PaginatedApiResponse<T> = ApiResponse<PaginatedResponse<T>>;

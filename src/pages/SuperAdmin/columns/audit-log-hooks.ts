@@ -2,9 +2,17 @@ import { useState, useCallback } from "react";
 import auditLogService from "@/service/audit-log.service";
 import type { IAuditLog } from "@/model/audit-log.model";
 
+
+export interface IUserStats {
+  activeUsers: number;
+  verifiedUsers: number;
+  adminUsers: number;
+}
+
 export function useAuditLogHook() {
   const [logs, setLogs] = useState<IAuditLog[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -25,6 +33,7 @@ export function useAuditLogHook() {
             totalCount: response.payload.totalCount,
             totalPages: response.payload.totalPages,
           });
+     
         }
       } finally {
         setIsLoading(false);
@@ -39,5 +48,6 @@ export function useAuditLogHook() {
     pagination,
     setPagination,
     fetchLogs,
+
   };
 }
