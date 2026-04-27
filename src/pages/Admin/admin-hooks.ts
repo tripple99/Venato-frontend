@@ -12,6 +12,10 @@ import type {
 } from "@/types/market.types";
 import { type Products } from "@/types/products";
 import {type ILocation } from "@/model/market.model";
+import { useAuthStore } from "@/store/authStore";
+import userService from "@/service/user.service";
+
+
 export const useProductHook = () => {
   const [products, setProducts] = useState<Products[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -109,6 +113,8 @@ export const useProductHook = () => {
       try {
         setIsLoading(true);
         const res = await productService.getProducts({ page, limit, search });
+       
+       
         setIsLoading(false);
         if (res?.payload) {
           setProducts(res.payload.data.map(mapToProducts));
@@ -121,6 +127,18 @@ export const useProductHook = () => {
             hasPreviousPage: res.payload.hasPreviousPage,
           });
         }
+         const marketId = useAuthStore.getState().user?.userMarket;
+         console.log(marketId);
+         if(!marketId){
+            const profile = await userService.getMyProfile()
+       
+        if (profile?.payload) {
+          
+          useAuthStore.setState({
+            user: profile.payload,
+          });
+        }
+         }
       } catch (error) {
         console.error("Error fetching products:", error);
         setIsLoading(false);

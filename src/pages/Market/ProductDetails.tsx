@@ -2,16 +2,35 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { MapPin, ArrowLeft, ShieldCheck, Store } from "lucide-react";
-import { Button } from "@/components/ui/button";
+
 import { images } from "@/assets/images";
 import productService from "@/service/product.service";
 import type { Product } from "@/model/product.model";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  type CarouselApi,
+} from "@/components/ui/carousel";
+import { cn } from "@/lib/utils";
 
 export default function ProductDetails() {
   const { id } = useParams<{ id: string }>();
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
+
+  useEffect(() => {
+    if (!api) return;
+    setCurrent(api.selectedScrollSnap());
+    api.on("select", () => {
+      setCurrent(api.selectedScrollSnap());
+    });
+  }, [api]);
 
   useEffect(() => {
     if (id) {
@@ -32,15 +51,19 @@ export default function ProductDetails() {
     }
   }, [id]);
 
-  const imageUrl =
+  const productImages =
     product?.images && product.images.length > 0
-      ? product.images[0]
-      : images.productYam; // Fallback image
+      ? product.images
+      : [images.productYam];
 
   const locationString = product?.market?.location
     ? typeof product.market.location === "string"
       ? product.market.location
-      : `${product.market.location.state || ''}${product.market.location.country ? `, ${product.market.location.country}` : ''}`
+      : `${product.market.location.state || ""}${
+          product.market.location.country
+            ? `, ${product.market.location.country}`
+            : ""
+        }`
     : "Unknown Location";
 
   return (
@@ -68,24 +91,64 @@ export default function ProductDetails() {
         ) : product ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             
-            {/* Left: Image Container */}
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              className="relative w-full h-[400px] lg:h-[500px] rounded-3xl overflow-hidden border border-gray-100 shadow-sm"
-            >
-              <img
-                src={imageUrl}
-                alt={product.name}
-                className="w-full h-full object-cover"
-              />
-              {/* Verified badge mapping */}
-              <div className="absolute top-6 left-6 bg-white/60 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 shadow-lg shadow-black/5 text-xs font-bold text-gray-900 uppercase tracking-wider border border-white/40">
-                <ShieldCheck size={16} className="text-[#0D6449]" />
-                <span>Verified Harvest</span>
-              </div>
-            </motion.div>
+            {/* Left: Image Carousel Container */}
+            <div className="flex flex-col gap-4">
+              <Carousel setApi={setApi} className="w-full">
+                <CarouselContent>
+                  {productImages.map((image, index) => (
+                    <CarouselItem key={index}>
+                      <motion.div
+                        initial={{ opacity: 0, x: -30 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.6 }}
+                        className="relative w-full h-[400px] lg:h-[500px] rounded-3xl overflow-hidden border border-gray-100 shadow-sm"
+                      >
+                        <img
+                          src={image}
+                          alt={`${product.name} - ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        {/* Verified badge mapping */}
+                        <div className="absolute top-6 left-6 bg-white/60 backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 shadow-lg shadow-black/5 text-xs font-bold text-gray-900 uppercase tracking-wider border border-white/40">
+                          <ShieldCheck size={16} className="text-[#0D6449]" />
+                          <span>Verified Harvest</span>
+                        </div>
+                      </motion.div>
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                {productImages.length > 1 && (
+                  <>
+                    <CarouselPrevious className="left-4 bg-white/80 hover:bg-white text-gray-900 border-none shadow-md" />
+                    <CarouselNext className="right-4 bg-white/80 hover:bg-white text-gray-900 border-none shadow-md" />
+                  </>
+                )}
+              </Carousel>
+
+              {/* Thumbnails Slider */}
+              {productImages.length > 1 && (
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide px-1">
+                  {productImages.map((image, index) => (
+                    <button
+                      key={index}
+                      onClick={() => api?.scrollTo(index)}
+                      className={cn(
+                        "relative w-20 h-20 rounded-xl overflow-hidden border-2 transition-all shrink-0 shadow-sm",
+                        current === index
+                          ? "border-[#0D6449] ring-2 ring-[#0D6449]/20"
+                          : "border-transparent opacity-60 hover:opacity-100"
+                      )}
+                    >
+                      <img
+                        src={image}
+                        alt={`Thumbnail ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Right: Product Details */}
             <motion.div
@@ -154,14 +217,14 @@ export default function ProductDetails() {
               </div>
 
               {/* CTA */}
-              <div className="mt-auto pt-4 flex gap-4">
+              {/* <div className="mt-auto pt-4 flex gap-4">
                 <Button className="flex-1 bg-[#0D6449] hover:bg-[#0A503A] text-white rounded-xl py-6 text-lg font-semibold shadow-lg shadow-[#0D6449]/20 transition-all">
                   Initiate Trade
                 </Button>
                 <Button variant="outline" className="px-8 py-6 rounded-xl border-2 border-gray-200 text-gray-700 hover:bg-gray-50 flex items-center justify-center transition-all">
                    Contact Agent
                 </Button>
-              </div>
+              </div> */}
 
             </motion.div>
           </div>

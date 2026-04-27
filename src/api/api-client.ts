@@ -2,7 +2,8 @@ import axios, { type AxiosInstance, type AxiosResponse } from "axios";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/authStore";
 // Environment-based API URL configuration
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api";
 
 // Debug logging for API configuration
 if (import.meta.env.VITE_DEBUG === "true" || import.meta.env.DEV) {
@@ -13,7 +14,7 @@ if (import.meta.env.VITE_DEBUG === "true" || import.meta.env.DEV) {
     isProd: import.meta.env.PROD,
   });
 }
-   
+
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -74,11 +75,11 @@ apiClient.interceptors.response.use(
       },
       response: error.response
         ? {
-          status: error.response.status,
-          statusText: error.response.statusText,
-          data: error.response.data,
-          headers: error.response.headers,
-        }
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: error.response.data,
+            headers: error.response.headers,
+          }
         : "No response received",
       request: error.request
         ? "Request was made but no response received"

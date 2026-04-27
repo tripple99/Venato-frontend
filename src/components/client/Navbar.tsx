@@ -2,9 +2,10 @@ import { Button } from "@/components/ui/button";
 import { Link as RouterLink, useLocation } from "react-router-dom";
 import { Link as ScrollLink } from "react-scroll";
 import { useState, useRef, useEffect } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Home } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-
+import { useAuthStore } from "@/store/authStore";
+import { AuthRole } from "@/model/auth.model";
 interface NavItem {
   title: string;
   href: string;
@@ -23,6 +24,14 @@ export default function Navbar() {
   const sideRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { isAuthenticated, user } = useAuthStore();
+
+  const getDashboardPath = () => {
+    if (!user) return "/auth/login";
+    if (user.roles === AuthRole.superAdmin) return "/superadmin";
+    if (user.roles === AuthRole.Admin) return "/admin";
+    return "/user";
+  };
 
   // Routes that should always have a solid/light navbar from the start
   const isLightPage = location.pathname.startsWith("/product") || 
@@ -113,13 +122,25 @@ export default function Navbar() {
           })}
         </div>
 
-        {/* Login Button */}
-        <Button
-          asChild
-          className="bg-[#0D6449] hover:bg-[#0A503A] text-white rounded-full px-6 py-2 text-sm font-semibold transition-all duration-300 shadow-lg shadow-[#0D6449]/25 hover:shadow-[#0D6449]/40"
-        >
-          <RouterLink to="/auth/login">Login</RouterLink>
-        </Button>
+        {/* Auth Button */}
+        {isAuthenticated ? (
+          <Button
+            asChild
+            className="bg-[#0D6449] hover:bg-[#0A503A] text-white rounded-full px-6 py-2 text-sm font-semibold transition-all duration-300 shadow-lg shadow-[#0D6449]/25 hover:shadow-[#0D6449]/40 flex items-center gap-2"
+          >
+            <RouterLink to={getDashboardPath()}>
+              <Home size={16} />
+              Dashboard
+            </RouterLink>
+          </Button>
+        ) : (
+          <Button
+            asChild
+            className="bg-[#0D6449] hover:bg-[#0A503A] text-white rounded-full px-6 py-2 text-sm font-semibold transition-all duration-300 shadow-lg shadow-[#0D6449]/25 hover:shadow-[#0D6449]/40"
+          >
+            <RouterLink to="/auth/login">Login</RouterLink>
+          </Button>
+        )}
       </motion.nav>
 
       <div className="lg:hidden fixed top-0 left-0 right-0 z-50">
@@ -224,9 +245,25 @@ export default function Navbar() {
                   >
                     <Button
                       asChild
-                      className="w-full bg-[#0D6449] hover:bg-[#0A503A] text-white rounded-xl py-3 text-base font-semibold"
+                      className="w-full bg-[#0D6449] hover:bg-[#0A503A] text-white rounded-xl py-6 text-base font-semibold flex items-center justify-center gap-2"
                     >
-                      <RouterLink to="/auth/login">Login</RouterLink>
+                      {isAuthenticated ? (
+                        <RouterLink
+                          to={getDashboardPath()}
+                          onClick={() => setIsOpen(false)}
+                          className="flex items-center gap-2"
+                        >
+                          <Home size={20} />
+                          Dashboard
+                        </RouterLink>
+                      ) : (
+                        <RouterLink
+                          to="/auth/login"
+                          onClick={() => setIsOpen(false)}
+                        >
+                          Login
+                        </RouterLink>
+                      )}
                     </Button>
                   </motion.div>
                 </div>

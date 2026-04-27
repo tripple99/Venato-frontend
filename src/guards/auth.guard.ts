@@ -1,6 +1,6 @@
-import {redirect, type LoaderFunctionArgs} from "react-router-dom";
+import { redirect, type LoaderFunctionArgs } from "react-router-dom";
 import { AuthRole } from "@/model/auth.model";
-import {useAuthStore} from "../store/authStore";
+import { useAuthStore } from "../store/authStore";
 
 import type { IProfile } from "@/model/user.model";
 // 1. Define the shape of your persisted data so we can parse it safely
@@ -34,13 +34,9 @@ export const requireAuth =
       throw redirect(`/auth/login?${params.toString()}`);
     }
 
-    if (
-      allowedRoles &&
-      !user.roles?.includes(allowedRoles[0])
-    ) {
+    if (allowedRoles && !user.roles?.includes(allowedRoles[0])) {
       throw redirect("/unauthorized");
     }
-   
 
     return null;
   };
