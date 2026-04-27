@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Image from "next/image"
 
 import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
@@ -35,11 +34,10 @@ export function Pattern() {
           <CarouselItem key={index}>
             <div className="p-1">
               <Card className="group/card relative aspect-square overflow-hidden border-0 p-0">
-                <Image
+                <img
                   src={`https://picsum.photos/800/800?grayscale&random=${index + 45}`}
                   alt={`Slide ${index + 1}`}
-                  fill
-                  className="scale-100 object-cover transition-transform duration-500 ease-in-out group-hover/card:scale-105"
+                  className="w-full h-full scale-100 object-cover transition-transform duration-500 ease-in-out group-hover/card:scale-105"
                 />
                 {/* Background fade effects */}
                 <div className="absolute inset-x-0 bottom-0 h-1/2 bg-linear-to-t from-black/80 to-transparent" />
