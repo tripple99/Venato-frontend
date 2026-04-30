@@ -48,7 +48,6 @@ export function SignUpForm() {
       toast.success(response.message);
       // TODO: Handle success - redirect, etc.
     } catch (error: unknown) {
-      form.reset();
       console.error("Registration failed:", error);
 
       // Error toast is already handled by the global error handler
