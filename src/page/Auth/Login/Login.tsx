@@ -37,7 +37,12 @@ export function LoginForm({
     try {
       const res = await authService.login(data)
       form.reset()
-
+      if(res.message === "User not verified Opt has been sent to your email "){
+        localStorage.setItem("verify-otp-email", data.email);
+        navigate("/auth/otp")
+        toast.success(res.message)
+        return
+      }
       navigate(`/${res.roles}`)
       toast.success("Logged in successfully")
       // Handle redirect or state update here

@@ -53,14 +53,14 @@ class AuthService {
 
   public async login(
     payload: Login,
-  ): Promise<IProfile> {
+  ): Promise<IProfile & { message?: string }> {
     try {
       const response = await authAPI.login(payload);;
       const userProfile = await userService.getMyProfile();
       useAuthStore
         .getState().setAuth(userProfile.payload, response.payload.accessToken);
 
-        return userProfile.payload;
+        return { ...userProfile.payload, message: response.message };
 
     } catch (error: any) {
       handleAnyError(error);
