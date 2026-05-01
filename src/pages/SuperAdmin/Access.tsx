@@ -71,8 +71,8 @@ const inviteSchema = z.object({
   fullname: z.string().min(2, { message: "Fullname must be at least 2 characters" }),
   email: z.string().email({ message: "Invalid email address" }),
   role: z.nativeEnum(AuthRole).refine(
-    (val) => val === AuthRole.Admin || val === AuthRole.superAdmin,
-    { message: "Role must be admin or superadmin" }
+    (val) => val === AuthRole.Admin || val === AuthRole.User,
+    { message: "Role must be admin or User" }
   ),
 });
 
