@@ -55,7 +55,7 @@ class AuthService {
     payload: Login,
   ): Promise<IProfile & { message?: string }> {
     try {
-      const response = await authAPI.login(payload);;
+      const response = await authAPI.login(payload);
       const userProfile = await userService.getMyProfile();
       useAuthStore
         .getState().setAuth(userProfile.payload, response.payload.accessToken);
@@ -63,9 +63,10 @@ class AuthService {
         return { ...userProfile.payload, message: response.message };
 
     } catch (error: any) {
-      handleAnyError(error);
+        handleAnyError(error);
       throw error;
     }
+
   }
 
   public async forgotPassword(

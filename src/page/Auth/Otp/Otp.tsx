@@ -98,7 +98,7 @@ export default function VerifyOtpPage() {
           </h1>
           <p className="text-muted-foreground text-[15px] leading-relaxed">
             We've sent a 6-digit verification code to{" "}
-            <span className="text-foreground font-semibold">{email}</span>.
+            <span className="text-foreground font-semibold">{verifyEmail || email}</span>.
           </p>
         </div>
 

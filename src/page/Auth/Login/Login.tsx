@@ -42,13 +42,13 @@ export function LoginForm({
       toast.success("Logged in successfully")
       // Handle redirect or state update here
     } catch (error: any) {
-      if(error.message === "User not verified Opt has been sent to your email "){
+      if (error.response?.data?.status === "user_not_verified") {
         localStorage.setItem("verify-otp-email", data.email);
-        navigate("/auth/otp")
-        toast.success(error.message)
-        return
+        navigate("/auth/otp");
+        toast.success(error.response.data.message || "User not verified. An OTP has been sent to your email.");
+        return;
       }
-      console.error("Login failed:", error)
+      console.error("Login failed:", error);
 
       // Error is already handled by GlobalErrorHandler in authService
     } finally {
