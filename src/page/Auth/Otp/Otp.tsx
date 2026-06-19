@@ -1,41 +1,55 @@
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-// import { Spinner } from "@/components/ui/spinner";
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import authService from "@/service/auth.service";
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import z from "zod";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { OtpPurpose } from "@/model/auth.model";
-// 1. Define Zod Schema for OTP (usually 6 digits)
+
 const otpSchema = z.object({
-  otp: z.string().min(6, "OTP must be 6 digits"),
+  otp: z.string().regex(/^\d{6}$/, "OTP must be exactly 6 digits"),
 });
 
 export default function VerifyOtpPage() {
   const [otp, setOtp] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+
   const navigate = useNavigate();
 
-  // Retrieve phone from localStorage (set in the previous Forgot Password step)
-  const email =
-    localStorage.getItem("forgot-password-email") || "";
- const verifyEmail = localStorage.getItem("verify-otp-email") || "";
-  // 2. Submit Handler
+  const email = localStorage.getItem("forgot-password-email") || "";
+  const verifyEmail = localStorage.getItem("verify-otp-email") || "";
+
+  const activeEmail = verifyEmail || email;
+  const isRegistrationFlow = Boolean(verifyEmail);
+
+  useEffect(() => {
+    if (!email && !verifyEmail) {
+      toast.error("Session expired", {
+        description: "Please request a new verification code.",
+      });
+
+      navigate("/auth/forgot-password", { replace: true });
+    }
+  }, [email, verifyEmail, navigate]);
+
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const result = otpSchema.safeParse({ otp });
+    if (isSubmitting) return;
 
-    if (!result.success) {
+    const validation = otpSchema.safeParse({ otp });
+
+    if (!validation.success) {
       toast.error("Invalid Code", {
-        description: "Please enter the full 6-digit code sent to your phone.",
+        description: "Please enter the complete 6-digit verification code.",
       });
       return;
     }
@@ -43,21 +57,39 @@ export default function VerifyOtpPage() {
     try {
       setIsSubmitting(true);
 
-      // We use the phone number from localStorage for verification
-      const result = await authService.verifyOtp({ email:verifyEmail ? verifyEmail: email, otp: otp, purpose:verifyEmail? OtpPurpose.Registration: OtpPurpose.RESETPASSWORD });
-     
-      localStorage.setItem("resetToken", result.payload.resetToken);
-      
-   
-      if(verifyEmail){
+      const response = await authService.verifyOtp({
+        email: activeEmail,
+        otp,
+        purpose: isRegistrationFlow
+          ? OtpPurpose.Registration
+          : OtpPurpose.RESETPASSWORD,
+      });
+
+      if (isRegistrationFlow) {
         localStorage.removeItem("verify-otp-email");
-        navigate("/auth/login");
-      }else{
-           toast.success("OTP Verified", {
+
+        toast.success("Email verified successfully", {
+          description: "You can now sign in to your account.",
+        });
+
+        navigate("/auth/login", { replace: true });
+        return;
+      }
+
+      const resetToken = response?.payload?.resetToken;
+
+      if (!resetToken) {
+        throw new Error("Reset token was not returned by the server.");
+      }
+
+      localStorage.setItem("resetToken", resetToken);
+      localStorage.removeItem("forgot-password-email");
+
+      toast.success("OTP Verified", {
         description: "You can now reset your password.",
       });
-        navigate("/auth/reset-password");
-      }
+
+      navigate("/auth/reset-password", { replace: true });
     } catch (error) {
       toast.error("Verification Failed", {
         description:
@@ -71,66 +103,111 @@ export default function VerifyOtpPage() {
   };
 
   const handleResend = async () => {
+    if (isResending || !activeEmail) return;
+
     try {
-      toast.info("Resending code...", { description: `Sent to ${email}` });
-      await authService.sendOtp({ email:verifyEmail? verifyEmail:email, purpose:verifyEmail? OtpPurpose.Registration: OtpPurpose.RESETPASSWORD });
-      
-      toast.success("Code resent successfully!");
-    } catch {
-      toast.error("Failed to resend code");
+      setIsResending(true);
+
+      toast.info("Resending code...", {
+        description: `Sending a new code to ${activeEmail}`,
+      });
+
+      await authService.sendOtp({
+        email: activeEmail,
+        purpose: isRegistrationFlow
+          ? OtpPurpose.Registration
+          : OtpPurpose.RESETPASSWORD,
+      });
+
+      toast.success("Code resent successfully");
+    } catch (error) {
+      toast.error("Failed to resend code", {
+        description:
+          error instanceof Error
+            ? error.message
+            : "Please try again later.",
+      });
+    } finally {
+      setIsResending(false);
     }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 bg-background relative overflow-hidden transition-colors duration-500">
+    <div className="relative flex min-h-[80vh] flex-col items-center justify-center overflow-hidden bg-background px-4 transition-colors duration-500">
       <form
         onSubmit={onSubmit}
-        className="max-w-md w-full bg-white/70 dark:bg-slate-900/40 p-8 rounded-[32px] border border-white/20 dark:border-slate-800 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)] backdrop-blur-2xl transition-all duration-500 z-10"
+        className="z-10 w-full max-w-md rounded-[32px] border border-white/20 bg-white/70 p-6 sm:p-8 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] backdrop-blur-2xl transition-all duration-500 dark:border-slate-800 dark:bg-slate-900/40 dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)]"
       >
         <div className="mb-10 text-center sm:text-left">
-          <div className="flex items-center justify-center sm:justify-start gap-4 mb-6">
-            <div className="p-3 bg-primary/10 dark:bg-primary/20 rounded-2xl ring-1 ring-primary/20">
-              <ShieldCheck className="w-6 h-6 text-primary" />
+          <div className="mb-6 flex items-center justify-center gap-4 sm:justify-start">
+            <div className="rounded-2xl bg-primary/10 p-3 ring-1 ring-primary/20 dark:bg-primary/20">
+              <ShieldCheck className="h-6 w-6 text-primary" />
             </div>
           </div>
-          <h1 className="mb-2 text-3xl font-bold text-foreground tracking-tight">
+
+          <h1 className="mb-2 text-3xl font-bold tracking-tight text-foreground">
             Verify OTP
           </h1>
-          <p className="text-muted-foreground text-[15px] leading-relaxed">
+
+          <p className="text-[15px] leading-relaxed text-muted-foreground">
             We've sent a 6-digit verification code to{" "}
-            <span className="text-foreground font-semibold">{verifyEmail || email}</span>.
+            <span className="break-all font-semibold text-foreground">
+              {activeEmail}
+            </span>
+            .
           </p>
         </div>
 
         <div className="space-y-10">
-          {/* OTP Input Field */}
-          <div className="space-y-4 flex flex-col items-center justify-center">
+          <div className="flex flex-col items-center justify-center space-y-4 overflow-x-hidden">
             <Label
               htmlFor="otp"
-              className="w-full text-left text-sm font-semibold text-foreground/80 ml-1"
+              className="ml-1 w-full text-left text-sm font-semibold text-foreground/80"
             >
               Verification Code
             </Label>
 
-            <InputOTP maxLength={6} value={otp} onChange={setOtp}>
-              <InputOTPGroup className="gap-3">
+            <InputOTP
+              maxLength={6}
+              value={otp}
+              onChange={(value) => setOtp(value.replace(/\D/g, ""))}
+            >
+              <InputOTPGroup className="flex-nowrap gap-1 sm:gap-2 md:gap-3">
                 {Array.from({ length: 6 }).map((_, index) => (
                   <InputOTPSlot
                     key={index}
                     index={index}
-                    className="rounded-2xl size-14 border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 text-foreground text-2xl font-bold focus-visible:ring-2 focus-visible:ring-primary focus:border-primary transition-all shadow-sm"
+                    className="
+                      h-10 w-10
+                      sm:h-12 sm:w-12
+                      md:h-14 md:w-14
+                      rounded-xl
+                      sm:rounded-2xl
+                      border-slate-200
+                      dark:border-slate-700
+                      bg-white/50
+                      dark:bg-slate-900/50
+                      text-lg
+                      sm:text-xl
+                      md:text-2xl
+                      font-bold
+                      shadow-sm
+                      transition-all
+                      focus-visible:ring-2
+                      focus-visible:ring-primary
+                      focus:border-primary
+                    "
                   />
                 ))}
               </InputOTPGroup>
             </InputOTP>
           </div>
 
-          {/* Action Buttons */}
           <div className="space-y-4 pt-4">
             <Button
               type="submit"
-              className="w-full rounded-2xl cursor-pointer h-14 bg-primary-venato text-white dark:text-[#111827] hover:bg-primary/80 dark:hover:bg-gray-200 font-bold text-base transition-all shadow-xl shadow-primary/10 active:scale-[0.98] disabled:opacity-70"
-              disabled={otp.length < 6}
+              className="h-14 w-full cursor-pointer rounded-2xl bg-primary-venato text-base font-bold text-white shadow-xl shadow-primary/10 transition-all hover:bg-primary/80 active:scale-[0.98] disabled:opacity-70 dark:text-[#111827] dark:hover:bg-gray-200"
+              disabled={otp.length !== 6 || isSubmitting}
               loading={isSubmitting}
               loadingText="Verifying..."
             >
@@ -140,7 +217,7 @@ export default function VerifyOtpPage() {
             <Button
               type="button"
               variant="ghost"
-              className="w-full rounded-2xl h-14 cursor-pointer text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-all flex items-center justify-center gap-2 font-medium"
+              className="flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl font-medium text-muted-foreground transition-all hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5"
               onClick={() => navigate("/auth/forgot-password")}
               disabled={isSubmitting}
             >
@@ -151,13 +228,14 @@ export default function VerifyOtpPage() {
         </div>
 
         <div className="mt-10 text-center text-sm font-medium text-muted-foreground">
-          Didn't receive a code?{" "}
+          Didn't receive a code?
           <button
             type="button"
             onClick={handleResend}
-            className="text-primary cursor-pointer hover:text-primary/80 font-bold decoration-2 underline-offset-4 ml-1 transition-colors"
+            disabled={isResending}
+            className="ml-1 cursor-pointer font-bold text-primary underline-offset-4 transition-colors hover:text-primary/80 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Resend Code
+            {isResending ? "Sending..." : "Resend Code"}
           </button>
         </div>
       </form>
