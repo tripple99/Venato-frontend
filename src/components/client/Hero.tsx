@@ -85,7 +85,7 @@ export default function Hero() {
             variant="outline"
             className="border-2 border-white/40 text-white bg-white/10 backdrop-blur-md hover:bg-white/20 hover:border-white/60 rounded-full px-8 py-6 text-base font-semibold transition-all duration-300"
           >
-            <Link to="/markets">View Demo</Link>
+            <Link to="/markets">View Markets</Link>
           </Button>
         </motion.div>
       </motion.div>

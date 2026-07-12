@@ -10,6 +10,7 @@ import { ProductCard, ProductCardSkeleton } from "./productCard";
 import { MarketFilters } from "./filters";
 // import { ShimmerTable } from "@/components/ui/shimmerTable";
 import { useDebounce } from "@/hooks/useDebounce";
+
 export default function Market() {
   const {
     isLoadingProducts,
@@ -21,7 +22,7 @@ export default function Market() {
     loadMoreProducts,
     addToWatchList,
   } = useMarketHook();
-
+ 
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeMarketId, setActiveMarketId] = useState("all");
@@ -56,7 +57,7 @@ export default function Market() {
 
     loadMoreProducts(filters);
   };
- console.log(markets,"markets")
+
   return (
     <div className="w-full flex flex-col pb-0 dark:bg-white">
       {/* ─── HERO SECTION ─── */}
@@ -131,7 +132,7 @@ export default function Market() {
             </h2>
           </div>
           <span className="text-sm font-medium text-gray-500">
-            {isLoadingProducts && products.length === 0 ? "Loading harvests..." : `Found ${productPagination.totalCount} reliable harvests`}
+            {isLoadingProducts && products.length === 0 ? "" : `Found ${productPagination.totalCount} reliable harvests`}
           </span>
         </div>
 

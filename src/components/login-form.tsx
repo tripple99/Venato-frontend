@@ -99,14 +99,14 @@ export function LoginForm({
         </form>
       </Form>
 
-      <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
+      {/* <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
         <span className="bg-white dark:bg-slate-950 text-muted-foreground relative z-10 px-2">
           Or continue with
         </span>
-      </div>
+      </div> */}
 
       {/* Social buttons */}
-      <div className="grid gap-2 sm:grid-cols-3">
+      {/* <div className="grid gap-2 sm:grid-cols-3">
         <Button variant="outline" type="button" className="rounded-full h-11 border-slate-200 hover:bg-slate-50">
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -156,7 +156,7 @@ export function LoginForm({
           </svg>
           Facebook
         </Button>
-      </div>
+      </div> */}
 
       <div className="text-center text-sm">
         Don&apos;t have an account?{" "}

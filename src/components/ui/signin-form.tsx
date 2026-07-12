@@ -152,14 +152,14 @@ export default function SignUpForm() {
         </Button>
 
         {/* Divider */}
-        <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t py-2">
+        {/* <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t py-2">
           <span className="bg-white dark:bg-slate-950 text-muted-foreground relative z-10 px-2 text-xs uppercase tracking-wider">
             Or register with
           </span>
-        </div>
+        </div> */}
 
         {/* Social buttons */}
-        <div className="grid gap-2 sm:grid-cols-3">
+        {/* <div className="grid gap-2 sm:grid-cols-3">
           <Button variant="outline" type="button" className="rounded-full h-11 border-slate-200 hover:bg-slate-50">
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -197,7 +197,7 @@ export default function SignUpForm() {
             </svg>
             Facebook
           </Button>
-        </div>
+        </div> */}
         
         <div className="text-center text-sm pt-4">
           Already have an account?{" "}

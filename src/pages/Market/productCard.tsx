@@ -6,6 +6,7 @@ import type { Product } from "@/model/product.model";
 import { images } from "@/assets/images";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { useAuthStore } from "@/store/authStore";
 interface ProductCardProps {
   product: Product;
   idx: number;
@@ -13,7 +14,8 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, idx, onWatchListToggle }: ProductCardProps) {
-  
+ const{isAuthenticated} = useAuthStore();
+
   const imageUrl =
     product.images && product.images.length > 0
       ? product.images[0]
@@ -26,6 +28,13 @@ export function ProductCard({ product, idx, onWatchListToggle }: ProductCardProp
     : "Unknown Location";
   const toWatchList = (id:string) => {
     try {
+      if (!isAuthenticated) {
+        toast.error("You need to be logged in to add a product to your watch list",{
+          description:"Please log in to continue",
+          duration:5000,
+        });
+        return;
+      }
       if (onWatchListToggle) {
         onWatchListToggle(id);
         toast.success("Product added to watch list",{
@@ -113,7 +122,7 @@ export function ProductCard({ product, idx, onWatchListToggle }: ProductCardProp
           {/* CTA */}
           <Link to={`/product/${product._id || ''}`}>
             <Button className="rounded-full px-4 py-1.5 text-xs font-semibold bg-green-600 hover:bg-green-700 text-white shadow-sm">
-              Trade
+                View
             </Button>
           </Link>
         </div>

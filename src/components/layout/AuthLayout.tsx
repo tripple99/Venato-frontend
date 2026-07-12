@@ -3,7 +3,7 @@ import { Outlet } from 'react-router-dom';
 export default function AuthLayout() {
     // Hardcoded configuration since settings store is ignored as per user request
     const loginPageConfig = {
-        imageUrl: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&q=80&w=2070",
+        imageUrl: "https://hbr.org/resources/images/article_assets/2021/08/Sep21_02_1176415931.jpg",
         welcomeText: "Welcome to Venato",
         subtitle: "Experience the next generation of asset management and tracking."
     };
