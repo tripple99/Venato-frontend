@@ -108,7 +108,7 @@ export const createAccessColumns = (
           variant="outline"
           className={cn(
             "font-medium border-0 px-3 py-1",
-            isActive !== false
+            isActive === true
               ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
               : "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400"
           )}
@@ -116,12 +116,12 @@ export const createAccessColumns = (
           <div
             className={cn(
               "h-1.5 w-1.5 rounded-full mr-2",
-              isActive !== false
+              isActive === true
                 ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
                 : "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]"
             )}
           />
-          {isActive !== false ? "Active" : "Inactive"}
+          {isActive === true ? "Active" : "Inactive"}
         </Badge>
       );
     },

@@ -4,6 +4,7 @@ import { DataTable } from "@/components/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import {
   Select,
   SelectContent,
@@ -328,12 +329,22 @@ export default function Alerts() {
                 {watchCondition === "change_pct" ? "Percentage" : "Target Price"}
               </FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  placeholder={watchCondition === "change_pct" ? "e.g. 10" : "e.g. 25000"}
-                  {...field}
-                  onChange={(e) => field.onChange(Number(e.target.value))}
-                />
+                {watchCondition === "change_pct" ? (
+                  <Input
+                    type="number"
+                    placeholder="e.g. 10"
+                    {...field}
+                    onChange={(e) => field.onChange(Number(e.target.value))}
+                  />
+                ) : (
+                  <CurrencyInput
+                    prefix="₦"
+                    placeholder="e.g. 25,000"
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    onBlur={field.onBlur}
+                  />
+                )}
               </FormControl>
               <FormMessage />
             </FormItem>

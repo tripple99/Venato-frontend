@@ -173,7 +173,7 @@ export const useAccessControlHook = () => {
         roles: response?.payload?.roles || role,
         userRole: response?.payload?.userRole || role,
         isVerified: response?.payload?.isVerified ?? false,
-        isActive: response?.payload?.isActive ?? true,
+        isActive: response?.payload?.isActive ?? false,
         allowedMarkets: response?.payload?.allowedMarkets || [],
       } as IProfile;
 
@@ -188,7 +188,7 @@ export const useAccessControlHook = () => {
           role === AuthRole.Admin || role === AuthRole.superAdmin
             ? prev.adminUsers + 1
             : prev.adminUsers,
-        activeUsers: prev.activeUsers + 1,
+        activeUsers: createdUser.isActive === true ? prev.activeUsers + 1 : prev.activeUsers,
       }));
       toast.success(response?.message || "Admin user successfully invited. An email has been sent.");
       return { success: true, data: createdUser };
@@ -231,7 +231,7 @@ export const useAccessControlHook = () => {
         const target = prev.find((u) => u._id === uid);
         if (target) {
           setStats((s) => ({
-            activeUsers: target.isActive !== false ? Math.max(0, s.activeUsers - 1) : s.activeUsers,
+            activeUsers: target.isActive === true ? Math.max(0, s.activeUsers - 1) : s.activeUsers,
             verifiedUsers: target.isVerified ? Math.max(0, s.verifiedUsers - 1) : s.verifiedUsers,
             adminUsers:
               target.userRole === AuthRole.Admin || target.roles === AuthRole.Admin

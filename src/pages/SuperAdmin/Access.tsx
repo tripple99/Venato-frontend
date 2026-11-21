@@ -417,8 +417,8 @@ export default function AccessControl() {
                 </div>
                 <div className="p-3 rounded-lg border space-y-1">
                   <p className="text-sm text-muted-foreground">Status</p>
-                  <Badge variant={selectedUser.isActive !== false ? "success" : "destructive"}>
-                    {selectedUser.isActive !== false ? "Active" : "Inactive"}
+                  <Badge variant={selectedUser.isActive === true ? "success" : "destructive"}>
+                    {selectedUser.isActive === true ? "Active" : "Inactive"}
                   </Badge>
                 </div>
               </div>

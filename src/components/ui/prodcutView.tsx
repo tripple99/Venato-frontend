@@ -1,20 +1,23 @@
-import { type Products } from "@/types/products";
 import { useEffect } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { type Products } from "@/types/products";
 import { IUnit, ICategory, MarketNames } from "@/types/market.types";
+import { type IMarketData } from "@/model/market.model";
+import { useFileUpload } from "@/hooks/use-file-upload";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import {
   Select,
   SelectContent,
@@ -22,37 +25,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { MapPin, X, DollarSign, Package, Box, Layers, Tag } from "lucide-react";
-import { toast } from "sonner";
-import { type IMarketData } from "@/model/market.model";
-import { useFileUpload, formatBytes } from "@/hooks/use-file-upload";
 import {
+  Package,
   Upload,
   ImageIcon,
-  Trash2 as TrashIcon,
-  ArrowRight,
-  ArrowLeft,
-  CheckCircle2,
+  X,
   Loader2,
 } from "lucide-react";
-import {
-  Stepper,
-  StepperContent,
-  StepperIndicator,
-  StepperItem,
-  StepperNav,
-  StepperSeparator,
-  StepperTitle,
-} from "@/components/reui/stepper";
-import { useState } from "react";
+import { toast } from "sonner";
 
 const productSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
+  name: z.string().trim().min(2, "Name must be at least 2 characters"),
   price: z.number().min(1, "Price must be at least 1"),
   unit: z.nativeEnum(IUnit),
   category: z.nativeEnum(ICategory),
   marketId: z.string().min(1, "Please select a market"),
-  quantityAvailable: z.number().min(1, "Quantity available must be at least 1"),
+  quantityAvailable: z.number().min(1, "Quantity must be at least 1"),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -71,21 +59,18 @@ interface ProductViewProps {
 export default function ProductView({
   onclose,
   addProductVal,
-  isLoading,
+  isLoading = false,
   productVal,
   markets,
   editView = false,
   updateProductVal,
 }: ProductViewProps) {
-  const [activeStep, setActiveStep] = useState(1);
-
   const {
     register,
     handleSubmit,
     control,
     reset,
     setValue,
-    trigger,
     formState: { errors },
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -94,53 +79,47 @@ export default function ProductView({
       price: productVal?.price || 0,
       unit: productVal?.unit || IUnit.TIYA,
       category: productVal?.category || ICategory.Grains,
-      marketId: productVal?.market._id || "",
+      marketId: productVal?.market?._id || "",
+      quantityAvailable: productVal?.quantityAvailable || 0,
     },
   });
 
-  const [fileState, { clearFiles, ...fileActions }] = useFileUpload({
+  const [fileState, fileActions] = useFileUpload({
     maxFiles: 5,
-    maxSize: 5 * 1024 * 1024, // 5MB
+    maxSize: 5 * 1024 * 1024,
     accept: "image/jpeg,image/png,image/jpg,image/webp",
     multiple: true,
     initialFiles:
       productVal?.images?.map((url, index) => ({
-        id: url, // Use URL as ID for existing images
-        name: `Existing Image ${index + 1}`,
+        id: url,
+        name: `Image ${index + 1}`,
         size: 0,
         type: "image/url",
-        url: url,
+        url,
       })) || [],
   });
 
   useEffect(() => {
     if (productVal) {
       reset({
-        name: productVal.name,
-        price: productVal.price,
-        unit: productVal.unit,
-        category: productVal.category,
-        marketId: productVal.market._id,
-        quantityAvailable: productVal.quantityAvailable,
+        name: productVal.name || "",
+        price: productVal.price || 0,
+        unit: productVal.unit || IUnit.TIYA,
+        category: productVal.category || ICategory.Grains,
+        marketId: productVal.market?._id || "",
+        quantityAvailable: productVal.quantityAvailable || 0,
       });
-
-      // Reset files if editing
-      if (productVal.images) {
-        clearFiles();
-      }
     }
-  }, [productVal, reset, clearFiles]);
+  }, [productVal, reset]);
 
-  // Auto-select if only one market is available
   useEffect(() => {
     if (!editView && markets?.length === 1 && markets[0]._id) {
       setValue("marketId", markets[0]._id);
     }
   }, [markets, editView, setValue]);
 
-  const onSubmit = async(data: ProductFormValues) => {
-    // Architectural guard: Never trigger endpoint on step 1
-    if (activeStep !== 2) return;
+  const onSubmit = async (data: ProductFormValues) => {
+    if (isLoading) return;
 
     const selectedMarket = markets?.find((m) => m._id === data.marketId);
 
@@ -150,17 +129,21 @@ export default function ProductView({
     }
 
     const finalLocation =
-      selectedMarket?.location || productVal?.market.location;
+      selectedMarket?.location || productVal?.market?.location;
 
     if (!finalLocation) {
       toast.error("Location information is missing");
       return;
     }
 
-    // Extract files from useFileUpload
     const newImages = fileState.files
       .map((f) => f.file)
-      .filter((f) => f instanceof File) as File[];
+      .filter((f): f is File => f instanceof File);
+
+    const retainedUrls = fileState.files
+      .filter((f) => !(f.file instanceof File))
+      .map((f) => f.preview || f.id)
+      .filter(Boolean) as string[];
 
     const fullProduct: Products = {
       _id: productVal?._id || "",
@@ -171,482 +154,346 @@ export default function ProductView({
       location: finalLocation,
       quantityAvailable: data.quantityAvailable,
       market: {
-        _id: selectedMarket?._id || productVal?.market._id || "",
-        name: (selectedMarket?.name || productVal?.market.name) as MarketNames,
+        _id: selectedMarket?._id || productVal?.market?._id || "",
+        name: (selectedMarket?.name || productVal?.market?.name) as MarketNames,
         location: finalLocation,
       },
-      image: newImages, // New files for upload
-      images: productVal?.images || [], // Existing URLs
+      image: newImages,
+      images: retainedUrls,
       created_at: productVal?.created_at || new Date(),
       update_at: new Date(),
     };
 
-    if (editView && updateProductVal) {
-      const success = await updateProductVal(fullProduct);
-      if (success) {
-        onclose(false);
-      }
-    } else {
-      const success = await addProductVal(fullProduct);
-      if (success) {
-        onclose(false);
-      }
+    const success =
+      editView && updateProductVal
+        ? await updateProductVal(fullProduct)
+        : await addProductVal(fullProduct);
+
+    if (success) {
+      onclose(false);
     }
   };
 
-  const handleNext = async () => {
-    const isValid = await trigger([
-      "name",
-      "price",
-      "unit",
-      "category",
-      "marketId",
-      "quantityAvailable",
-    ]);
-    if (isValid) {
-      setActiveStep(2);
-    } else {
-      toast.error("Please fill all required fields correctly");
-    }
-  };
-
-    const handleFormAction = (data: ProductFormValues) => {
-      if (activeStep === 1) {
-        handleNext();
-      } else {
-        onSubmit(data);
-      }
-    };
-
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4">
-        <Card className="relative w-full max-w-xl max-h-[85vh] flex flex-col mx-auto rounded-2xl shadow-2xl bg-background border-border overflow-hidden transition-all duration-300">
-          {isLoading && (
-            <div className="absolute inset-0 z-[60] flex items-center justify-center bg-background/60 backdrop-blur-sm animate-in fade-in duration-300">
-              <Loader2 className="h-10 w-10 text-primary-venato animate-spin" />
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open && !isLoading) {
+          onclose(false);
+        }
+      }}
+    >
+      <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+        <DialogHeader className="px-6 py-4 border-b shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-venato/10 text-primary-venato">
+              <Package className="h-4.5 w-4.5" />
             </div>
-          )}
-          <form
-            className="flex flex-col flex-1 min-h-0"
-            onSubmit={handleSubmit(handleFormAction)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && activeStep === 1) {
-                e.preventDefault();
-                handleSubmit(handleFormAction)();
-              }
-            }}
-          >
-            <CardHeader className="px-6 py-4 shrink-0 border-b bg-muted/30 dark:bg-muted/10">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="bg-primary-venato/10 p-2 rounded-lg">
-                  <Package className="h-6 w-6 text-primary-venato" />
+            <div>
+              <DialogTitle className="text-lg font-semibold leading-tight">
+                {editView ? "Edit Product" : "Add Product"}
+              </DialogTitle>
+              <DialogDescription className="text-xs mt-0.5">
+                {editView
+                  ? "Update product details and images."
+                  : "List a new product in your market inventory."}
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="flex flex-col flex-1 min-h-0"
+        >
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-5 space-y-4">
+            {/* Product Name */}
+            <div className="space-y-1.5">
+              <Label htmlFor="product-name" className="text-sm font-medium">
+                Product Name
+              </Label>
+              <Input
+                id="product-name"
+                {...register("name")}
+                placeholder="e.g. Fresh Tomatoes"
+                disabled={isLoading}
+                className={errors.name ? "border-destructive" : ""}
+              />
+              {errors.name && (
+                <p className="text-xs text-destructive">{errors.name.message}</p>
+              )}
+            </div>
+
+            {/* Price & Quantity */}
+            <div className="grid grid-cols-2 gap-3.5">
+              <div className="space-y-1.5">
+                <Label htmlFor="product-price" className="text-sm font-medium">
+                  Price (NGN)
+                </Label>
+                <Controller
+                  name="price"
+                  control={control}
+                  render={({ field }) => (
+                    <CurrencyInput
+                      id="product-price"
+                      prefix="₦"
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      onBlur={field.onBlur}
+                      placeholder="0"
+                      disabled={isLoading}
+                      className={errors.price ? "border-destructive" : ""}
+                    />
+                  )}
+                />
+                {errors.price && (
+                  <p className="text-xs text-destructive">
+                    {errors.price.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="product-quantity"
+                  className="text-sm font-medium"
+                >
+                  Quantity Available
+                </Label>
+                <Input
+                  id="product-quantity"
+                  type="number"
+                  min={0}
+                  {...register("quantityAvailable", { valueAsNumber: true })}
+                  placeholder="0"
+                  disabled={isLoading}
+                  className={
+                    errors.quantityAvailable ? "border-destructive" : ""
+                  }
+                />
+                {errors.quantityAvailable && (
+                  <p className="text-xs text-destructive">
+                    {errors.quantityAvailable.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Unit & Category */}
+            <div className="grid grid-cols-2 gap-3.5">
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Unit</Label>
+                <Controller
+                  name="unit"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger
+                        type="button"
+                        className={`w-full ${errors.unit ? "border-destructive" : ""}`}
+                      >
+                        <SelectValue placeholder="Select unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.values(IUnit).map((unit) => (
+                          <SelectItem key={unit} value={unit}>
+                            {unit}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-sm font-medium">Category</Label>
+                <Controller
+                  name="category"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger
+                        type="button"
+                        className={`w-full ${errors.category ? "border-destructive" : ""}`}
+                      >
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.values(ICategory).map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Market */}
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium">Market</Label>
+              <Controller
+                name="marketId"
+                control={control}
+                render={({ field }) => (
+                  <Select
+                    onValueChange={field.onChange}
+                    value={field.value}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger
+                      type="button"
+                      className={`w-full ${errors.marketId ? "border-destructive" : ""}`}
+                    >
+                      <SelectValue placeholder="Select a market" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {markets?.map((market) => (
+                        <SelectItem
+                          key={market._id}
+                          value={market._id || ""}
+                        >
+                          {market.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {errors.marketId && (
+                <p className="text-xs text-destructive">
+                  {errors.marketId.message}
+                </p>
+              )}
+            </div>
+
+            {/* Product Images */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">
+                  Images{" "}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    (optional)
+                  </span>
+                </Label>
+                <span className="text-xs text-muted-foreground">
+                  {fileState.files.length} / 5
+                </span>
+              </div>
+
+              <div
+                className={`flex items-center justify-center gap-3 rounded-lg border border-dashed px-4 py-3.5 text-center transition-colors cursor-pointer ${
+                  fileState.isDragging
+                    ? "border-primary-venato bg-primary-venato/5"
+                    : "border-border hover:border-primary-venato/60 hover:bg-muted/30"
+                } ${
+                  fileState.files.length >= 5 || isLoading
+                    ? "opacity-50 pointer-events-none"
+                    : ""
+                }`}
+                onDragEnter={fileActions.handleDragEnter}
+                onDragLeave={fileActions.handleDragLeave}
+                onDragOver={fileActions.handleDragOver}
+                onDrop={fileActions.handleDrop}
+                onClick={fileActions.openFileDialog}
+              >
+                <input {...fileActions.getInputProps()} className="hidden" />
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary-venato/10 text-primary-venato">
+                  <Upload className="h-4 w-4" />
                 </div>
-                <div>
-                  <CardTitle className="text-2xl font-bold tracking-tight">
-                    {editView ? "Edit Product" : "Add Product"}
-                  </CardTitle>
-                  <CardDescription className="text-sm">
-                    {editView
-                      ? "Update product details & media"
-                      : "List a new product in the market"}
-                  </CardDescription>
+                <div className="text-left">
+                  <p className="text-sm font-medium text-foreground">
+                    Click or drag images to upload
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    PNG, JPG, WEBP up to 5MB each
+                  </p>
                 </div>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => onclose(false)}
-                className="h-9 w-9 p-0 rounded-full hover:bg-muted transition-colors"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
 
-            {/* Stepper Navigation */}
-            <Stepper
-              value={activeStep}
-              onValueChange={setActiveStep}
-              className="mt-2"
-            >
-              <StepperNav>
-                <StepperItem step={1} className="flex-1">
-                  <div className="flex items-center gap-2 w-full">
-                    <div className="flex flex-col items-center gap-1.5">
-                      <StepperIndicator className="size-8">
-                        {activeStep > 1 ? (
-                          <CheckCircle2 className="size-4" />
-                        ) : (
-                          1
-                        )}
-                      </StepperIndicator>
-                      <StepperTitle className="text-[10px] uppercase tracking-wider font-bold opacity-70">
-                        Details
-                      </StepperTitle>
-                    </div>
-                    <StepperSeparator className="flex-1" />
-                  </div>
-                </StepperItem>
-                <StepperItem step={2} className="flex-none">
-                  <div className="flex flex-col items-center gap-1.5">
-                    <StepperIndicator className="size-8">2</StepperIndicator>
-                    <StepperTitle className="text-[10px] uppercase tracking-wider font-bold opacity-70">
-                      Media
-                    </StepperTitle>
-                  </div>
-                </StepperItem>
-              </StepperNav>
-            </Stepper>
-          </CardHeader>
-
-          <CardContent className="p-0 flex-1 min-h-0 overflow-y-auto scrollbar-hide">
-            <Stepper value={activeStep}>
-              {/* STEP 1: PRODUCT DETAILS */}
-              <StepperContent
-                value={1}
-                className="p-6 space-y-5 animate-in fade-in slide-in-from-right-4 duration-300"
-              >
-                <div className="grid gap-5">
-                  {/* Product Name */}
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="name"
-                      className="text-sm font-semibold flex items-center gap-2"
+              {fileState.files.length > 0 && (
+                <div className="grid grid-cols-5 gap-2 pt-1">
+                  {fileState.files.map((file) => (
+                    <div
+                      key={file.id}
+                      className="group relative aspect-square overflow-hidden rounded-lg border bg-muted/30"
                     >
-                      <Tag className="h-4 w-4 text-primary-venato/70" /> Product
-                      Name
-                    </Label>
-                    <Input
-                      id="name"
-                      {...register("name")}
-                      placeholder="e.g. Fresh Tomatoes"
-                      className={`bg-muted/30 focus-visible:ring-primary-venato transition-all ${errors.name ? "border-destructive ring-destructive/20" : "border-border"}`}
-                    />
-                    {errors.name && (
-                      <p className="text-[11px] text-destructive font-medium">
-                        {errors.name.message}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Product Price */}
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="price"
-                      className="text-sm font-semibold flex items-center gap-2"
-                    >
-                      <DollarSign className="h-4 w-4 text-primary-venato/70" />{" "}
-                      Price (NGN)
-                    </Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      {...register("price", { valueAsNumber: true })}
-                      placeholder="0"
-                      className={`bg-muted/30 focus-visible:ring-primary-venato transition-all ${errors.price ? "border-destructive ring-destructive/20" : "border-border"}`}
-                    />
-                    {errors.price && (
-                      <p className="text-[11px] text-destructive font-medium">
-                        {errors.price.message}
-                      </p>
-                    )}
-                  </div>
-                   {/* Product Market */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-primary-venato/70" />{" "}
-                      Market Location
-                    </Label>
-                    <Controller
-                      name="marketId"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <SelectTrigger
-                            type="button"
-                            className={`bg-muted/30 focus:ring-primary-venato transition-all ${errors.marketId ? "border-destructive" : "border-border"}`}
-                          >
-                            <SelectValue placeholder="Select a market" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {markets?.map((market) => (
-                              <SelectItem
-                                key={market._id}
-                                value={market._id || ""}
-                              >
-                                {market.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
-                  
-
-                  <div className="grid grid-cols-2 gap-4">
-                     <div className="space-y-2">
-                    <Label
-                      htmlFor="quantityAvailable"
-                      className="text-sm font-semibold flex items-center gap-2"
-                    >
-                      <Box className="h-4 w-4 text-primary-venato/70" />{" "}
-                      Quantity Available
-                    </Label>
-                    <Input
-                      id="quantityAvailable"
-                      type="number"
-                      {...register("quantityAvailable", { valueAsNumber: true })}
-                      placeholder="0"
-                      className={`bg-muted/30 focus-visible:ring-primary-venato transition-all ${errors.quantityAvailable ? "border-destructive ring-destructive/20" : "border-border"}`}
-                    />
-                    {errors.quantityAvailable && (
-                      <p className="text-[11px] text-destructive font-medium">
-                        {errors.quantityAvailable.message}
-                      </p>
-                    )}
-                  </div>
-                    {/* Product Unit */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold flex items-center gap-2">
-                        <Box className="h-4 w-4 text-primary-venato/70" /> Unit
-                      </Label>
-                      <Controller
-                        name="unit"
-                        control={control}
-                        render={({ field }) => (
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <SelectTrigger
-                              type="button"
-                              className={`bg-muted/30 focus:ring-primary-venato transition-all ${errors.unit ? "border-destructive" : "border-border"}`}
-                            >
-                              <SelectValue placeholder="Select unit" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.values(IUnit).map((unit) => (
-                                <SelectItem key={unit} value={unit}>
-                                  {unit}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    </div>
-
-                    {/* Product Category */}
-                    <div className="space-y-2">
-                      <Label className="text-sm font-semibold flex items-center gap-2">
-                        <Layers className="h-4 w-4 text-primary-venato/70" />{" "}
-                        Category
-                      </Label>
-                      <Controller
-                        name="category"
-                        control={control}
-                        render={({ field }) => (
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <SelectTrigger
-                              type="button"
-                              className={`bg-muted/30 focus:ring-primary-venato transition-all ${errors.category ? "border-destructive" : "border-border"}`}
-                            >
-                              <SelectValue placeholder="Select category" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.values(ICategory).map((category) => (
-                                <SelectItem key={category} value={category}>
-                                  {category}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      />
-                    </div>
-                  </div>
-                
-          
-                 
-                </div>
-              </StepperContent>
-
-              {/* STEP 2: MEDIA UPLOAD */}
-              <StepperContent
-                value={2}
-                className="p-6 space-y-6 animate-in fade-in slide-in-from-left-4 duration-300"
-              >
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm font-semibold flex items-center gap-2">
-                      <ImageIcon className="h-4 w-4 text-primary-venato/70" />{" "}
-                      Product Gallery
-                    </Label>
-                    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter bg-muted px-2 py-0.5 rounded-full">
-                      {fileState.files.length} / 5 Images
-                    </span>
-                  </div>
-
-                  <div
-                    className={`
-                        border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 cursor-pointer
-                        ${fileState.isDragging ? "border-primary-venato bg-primary-venato/5 scale-[0.98]" : "border-muted-foreground/20 hover:border-primary-venato/50 hover:bg-muted/20"}
-                        ${fileState.files.length >= 5 ? "opacity-50 cursor-not-allowed pointer-events-none grayscale" : ""}
-                      `}
-                    onDragEnter={fileActions.handleDragEnter}
-                    onDragLeave={fileActions.handleDragLeave}
-                    onDragOver={fileActions.handleDragOver}
-                    onDrop={fileActions.handleDrop}
-                    onClick={fileActions.openFileDialog}
-                  >
-                    <input
-                      {...fileActions.getInputProps()}
-                      className="hidden"
-                    />
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="bg-primary-venato/10 p-4 rounded-full shadow-inner">
-                        <Upload className="h-7 w-7 text-primary-venato" />
-                      </div>
-                      <div>
-                        <p className="text-base font-bold text-foreground">
-                          Click or drag images
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1 tracking-tight">
-                          Support: PNG, JPG, WEBP (Max 5MB)
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Selected Files List */}
-                  {fileState.files.length > 0 && (
-                    <div className="grid grid-cols-1 gap-3 mt-4 max-h-[250px] overflow-y-auto scrollbar-hide pr-1">
-                      {fileState.files.map((file) => (
-                        <div
-                          key={file.id}
-                          className="flex items-center gap-3 p-3 border border-border/50 rounded-xl bg-muted/20 dark:bg-muted/5 group hover:bg-muted/40 transition-colors"
-                        >
-                          <div className="h-14 w-14 overflow-hidden rounded-lg border border-border shadow-sm bg-background shrink-0">
-                            {file.preview ? (
-                              <img
-                                src={file.preview}
-                                alt="preview"
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center bg-muted">
-                                <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-bold truncate leading-none mb-1">
-                              {file.file.name}
-                            </p>
-                            <p className="text-[11px] text-muted-foreground font-mono">
-                              {file.file instanceof File
-                                ? formatBytes(file.file.size)
-                                : "Network Resource"}
-                            </p>
-                          </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full transition-all"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              fileActions.removeFile(file.id);
-                            }}
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </Button>
+                      {file.preview ? (
+                        <img
+                          src={file.preview}
+                          alt={file.file.name}
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <ImageIcon className="h-4 w-4 text-muted-foreground" />
                         </div>
-                      ))}
+                      )}
+                      <button
+                        type="button"
+                        aria-label="Remove image"
+                        disabled={isLoading}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fileActions.removeFile(file.id);
+                        }}
+                        className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-white opacity-90 transition-opacity hover:bg-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
                     </div>
-                  )}
-
-                  {fileState.errors.length > 0 && (
-                    <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20 animate-in shake duration-500">
-                      {fileState.errors.map((err, i) => (
-                        <p
-                          key={i}
-                          className="text-[11px] text-destructive font-bold"
-                        >
-                          {err}
-                        </p>
-                      ))}
-                    </div>
-                  )}
+                  ))}
                 </div>
-              </StepperContent>
-            </Stepper>
-          </CardContent>
-
-          <CardFooter className="px-6 py-4 shrink-0 border-t bg-muted/30 dark:bg-muted/10 flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              {activeStep === 2 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setActiveStep(1)}
-                  className="gap-2 font-semibold shadow-sm rounded-full"
-                >
-                  <ArrowLeft className="h-4 w-4" /> Back to Details
-                </Button>
               )}
-              {activeStep === 1 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => onclose(false)}
-                  className="text-muted-foreground font-semibold"
-                >
-                  Cancel
-                </Button>
+
+              {fileState.errors.length > 0 && (
+                <div className="rounded-md bg-destructive/10 px-3 py-2 space-y-0.5">
+                  {fileState.errors.map((err, i) => (
+                    <p key={i} className="text-xs text-destructive">
+                      {err}
+                    </p>
+                  ))}
+                </div>
               )}
             </div>
+          </div>
 
-            <div className="flex items-center gap-3">
-              {activeStep === 1 ? (
-                <Button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleNext();
-                  }}
-                  className="bg-primary-venato hover:bg-primary-venato-hover text-white gap-2 font-bold px-6 shadow-lg shadow-primary-venato/20 rounded-full"
-                >
-                  Continue <ArrowRight className="h-4 w-4" />
-                </Button>
+          <DialogFooter className="px-6 py-3.5 border-t bg-muted/20 shrink-0 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onclose(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="min-w-[120px] bg-primary-venato hover:bg-primary-venato-hover text-white"
+            >
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : editView ? (
+                "Save Changes"
               ) : (
-                <Button
-                  type="submit"
-                  disabled={isLoading || activeStep !== 2}
-                  className="bg-primary-venato hover:bg-primary-venato-hover text-white gap-2 font-bold px-6 shadow-lg shadow-primary-venato/20 rounded-full"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      {editView ? "Update Product" : "Publish Product"}
-                      <CheckCircle2 className="h-4 w-4 ml-1" />
-                    </>
-                  )}
-                </Button>
+                "Add Product"
               )}
-            </div>
-          </CardFooter>
+            </Button>
+          </DialogFooter>
         </form>
-      </Card>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
