@@ -20,8 +20,8 @@ export default function VerifyOtpPage() {
 
   const navigate = useNavigate();
 
-  const email = localStorage.getItem("forgot-password-email") || "";
-  const verifyEmail = localStorage.getItem("verify-otp-email") || "";
+  const [email] = useState(() => localStorage.getItem("forgot-password-email") || "");
+  const [verifyEmail] = useState(() => localStorage.getItem("verify-otp-email") || "");
 
   const activeEmail = verifyEmail || email;
   const isRegistrationFlow = Boolean(verifyEmail);

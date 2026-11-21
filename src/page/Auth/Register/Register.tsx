@@ -41,6 +41,7 @@ export function SignUpForm() {
   const onSubmit = async (data: SignUp) => {
     setLoading(true);
     try {
+      localStorage.removeItem("forgot-password-email");
       localStorage.setItem("verify-otp-email", data.email);
       const response = await authService.register(data);
       navigate("/auth/otp");

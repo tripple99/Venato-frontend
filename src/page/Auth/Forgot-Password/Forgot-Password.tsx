@@ -1,10 +1,7 @@
-
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-// import { Spinner } from "@/components/ui/spinner";
 import authService from "@/service/auth.service";
-// import { useSettingsStore } from "@/store/useSetting";
-import { AlertCircle, ArrowLeft } from 'lucide-react';
+import { AlertCircle, ArrowLeft, KeyRound } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -12,14 +9,12 @@ import { Input } from "@/components/ui/input";
 import z from "zod";
 
 const forgotPasswordSchema = z.object({
-  email: z.email().min(1,"Email is required"),
-
+  email: z.string().trim().min(1, "Email is required").email("Please enter a valid email address"),
 });
 
 export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 
 export default function ForgotPasswordPage() {
-  
   const [formValues, setFormValues] = useState<ForgotPasswordFormValues>({
     email: "",
   });
@@ -32,6 +27,7 @@ export default function ForgotPasswordPage() {
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isSubmitting) return;
 
     const result = forgotPasswordSchema.safeParse(formValues);
 
@@ -41,22 +37,30 @@ export default function ForgotPasswordPage() {
         email: fieldErrors.email?.[0],
       });
       toast.error("Validation failed", {
-        description: "Please enter a valid phone number with country code.",
+        description: fieldErrors.email?.[0] || "Please enter a valid email address.",
       });
       return;
     }
 
+    const cleanEmail = result.data.email;
+
     try {
       setIsSubmitting(true);
 
-      const response = await authService.forgotPassword(formValues.email);
+      const response = await authService.forgotPassword(cleanEmail);
 
-      localStorage.setItem("forgot-password-email", formValues.email);
-      // localStorage.setItem("forgot-password-token", response.data.accessToken);
-      if(response.status){
+      // Clear any stale registration verification or reset token so /auth/otp uses RESETPASSWORD flow
+      localStorage.removeItem("verify-otp-email");
+      localStorage.removeItem("resetToken");
+
+      if (response?.status) {
+        localStorage.setItem("forgot-password-email", cleanEmail);
         navigate("/auth/otp");
+      } else {
+        toast.error("Account not found", {
+          description: response?.message || "No account found with that email address.",
+        });
       }
-
     } catch (error: any) {
       toast.error("Server Error", {
         description:
@@ -69,30 +73,33 @@ export default function ForgotPasswordPage() {
 
   return (
     <form onSubmit={onSubmit} className="max-w-md m-auto h-fit w-full">
-      {/* <div className="flex justify-center mb-6">
-        <img src={appLogo} alt="Logo" className="h-20 w-20" />
-      </div> */}
       <div className="p-6">
-        <div className="mb-6">
-          <h1 className="mb-1 mt-4 text-xl font-semibold">Forgot Password?</h1>
+        <div className="mb-6 space-y-2">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-venato/10 text-primary-venato mb-3">
+            <KeyRound className="h-6 w-6" />
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight">Forgot Password?</h1>
           <p className="text-sm text-muted-foreground">
-            Enter the phone number associated with your account and we'll send you a verification code.
+            Enter the email address associated with your account and we&apos;ll send you a verification code.
           </p>
         </div>
 
         <div className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="phoneNumber" className="block text-sm">
-             Email 
+            <Label htmlFor="email" className="block text-sm">
+              Email Address
             </Label>
             <div className="relative">
               <Input
+                id="email"
+                type="email"
+                placeholder="m@example.com"
                 value={formValues.email}
-                onChange={(value) => {
-                  setFormValues({email:value.target.value});
+                onChange={(e) => {
+                  setFormValues({ email: e.target.value });
                   if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
                 }}
-                className="rounded-full h-11 shadow-none"
+                className="rounded-full h-11 shadow-none border-slate-200 focus:border-primary-venato transition-colors"
               />
             </div>
             {errors.email && (
@@ -103,12 +110,12 @@ export default function ForgotPasswordPage() {
             )}
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             <Button
               type="submit"
-              className="w-full rounded-full h-11 bg-primary-venato text-white font-semibold "
+              className="w-full rounded-full h-11 bg-primary-venato hover:bg-primary-venato-hover text-white font-semibold cursor-pointer"
               loading={isSubmitting}
-              loadingText="Requesting Code..."
+              loadingText="Sending Code..."
             >
               Send Verification Code
             </Button>
@@ -116,19 +123,19 @@ export default function ForgotPasswordPage() {
             <Button
               type="button"
               variant="outline"
-              className="w-full rounded-full h-11 "
+              className="w-full rounded-full h-11 cursor-pointer"
               onClick={() => navigate("/auth/login")}
               disabled={isSubmitting}
             >
-              <ArrowLeft className="w-4 h-4" /> Back to Login
+              <ArrowLeft className="w-4 h-4" /> Back to Sign In
             </Button>
           </div>
         </div>
       </div>
 
-      <p className="text-accent-foreground text-center text-sm mt-6">
+      <p className="text-accent-foreground text-center text-sm mt-2">
         Not a Member?
-        <Button asChild variant="link" className="px-2">
+        <Button asChild variant="link" className="px-2 text-primary-venato">
           <Link to="/auth/register">Register Now</Link>
         </Button>
       </p>

@@ -43,6 +43,7 @@ export function LoginForm({
       // Handle redirect or state update here
     } catch (error: any) {
       if (error.response?.data?.status === "user_not_verified") {
+        localStorage.removeItem("forgot-password-email");
         localStorage.setItem("verify-otp-email", data.email);
         navigate("/auth/otp");
         toast.success(error.response.data.message || "User not verified. An OTP has been sent to your email.");
