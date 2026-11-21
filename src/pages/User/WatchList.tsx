@@ -23,7 +23,6 @@ import { Bookmark, Tag, MapPin, DollarSign, Layers, Calendar } from "lucide-reac
 import { createWatchlistColumns } from "./columns/watchlist-columns";
 import type { WatchList } from "@/model/watch-list.model";
 import watchListService from "@/service/watch-list.service";
-import { toast } from "sonner";
 
 // Mock data for development
 
@@ -38,6 +37,7 @@ const formatPrice = (price: number) =>
 export default function WatchList() {
   const [items, setItems] = useState<WatchList[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMutating, setIsMutating] = useState(false);
   const [selectedItem, setSelectedItem] = useState<WatchList | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [removeOpen, setRemoveOpen] = useState(false);
@@ -73,16 +73,17 @@ export default function WatchList() {
   };
 
   const handleRemoveConfirm = async () => {
-    if (!itemToRemove) return;
+    if (!itemToRemove || isMutating) return;
+    setIsMutating(true);
     try {
-      await watchListService.removeFromWatchList(itemToRemove._id);
-      setItems((prev) => prev.filter((i) => i._id !== itemToRemove._id));
-    } catch {
-      setItems((prev) => prev.filter((i) => i._id !== itemToRemove._id));
-      toast.success("Item removed from watchlist");
+      const response = await watchListService.removeFromWatchList(itemToRemove._id);
+      if (response) {
+        setItems((prev) => prev.filter((i) => i._id !== itemToRemove._id));
+        setRemoveOpen(false);
+        setItemToRemove(null);
+      }
     } finally {
-      setRemoveOpen(false);
-      setItemToRemove(null);
+      setIsMutating(false);
     }
   };
 
@@ -219,12 +220,16 @@ export default function WatchList() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isMutating}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
-              onClick={handleRemoveConfirm}
+              disabled={isMutating}
+              onClick={(e) => {
+                e.preventDefault();
+                handleRemoveConfirm();
+              }}
             >
-              Remove
+              {isMutating ? "Removing..." : "Remove"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

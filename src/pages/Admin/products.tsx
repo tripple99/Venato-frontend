@@ -73,7 +73,7 @@ const initialProductState: Products = {
 
 export default function Product() {
   const { user } = useAuthStore();
-  const { products, isLoading, markets, pagination, getProducts, createProduct, updateProducts, deleteProduct, fetchUserMarkets } = useProductHook();
+  const { products, isLoading, isMutating, markets, pagination, getProducts, createProduct, updateProducts, deleteProduct, fetchUserMarkets } = useProductHook();
 
   const [viewOpen, setViewOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -83,7 +83,6 @@ export default function Product() {
   const [editProduct, setEditProduct] = useState<Products | null>(null);
   const [formProduct, setFormProduct] = useState<Products>(initialProductState);
   const [selectedProduct, setSelectedProduct] = useState<Products | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   
   useEffect(() => {
     if (user?.userMarket && user.userMarket.length > 0) {
@@ -262,12 +261,16 @@ export default function Product() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isMutating}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
-              onClick={handleDeleteConfirm}
+              disabled={isMutating}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteConfirm();
+              }}
             >
-              Delete
+              {isMutating ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -278,12 +281,11 @@ export default function Product() {
         <ProductView
           productVal={formProduct}
           markets={markets}
-          isLoading={isSubmitting}
+          isLoading={isMutating}
           onclose={() => {
             setProductViewOpen(false);
             setEditView(false);
             setEditProduct(null);
-            setIsSubmitting(false);
           }}
           addProductVal={async (product) => {
             const marketProduct: IMarketProduct = {
@@ -295,14 +297,11 @@ export default function Product() {
               quantityAvailable: product.quantityAvailable,
               image: product.image,
             };
-            setIsSubmitting(true);
             const { success } = await createProduct(marketProduct);
             if (success) {
-              setIsSubmitting(false);
               setProductViewOpen(false);
               return true;
             }
-            setIsSubmitting(false);
             return false;
           }}
           editView={editView}

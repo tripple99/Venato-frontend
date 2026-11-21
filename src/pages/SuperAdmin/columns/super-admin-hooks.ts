@@ -10,6 +10,7 @@ import type { IUserStats } from "./audit-log-hooks";
 export const useAccessControlHook = () => {
   const [users, setUsers] = useState<IProfile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMutating, setIsMutating] = useState(false);
     const [stats,setStats] = useState<IUserStats>({
     activeUsers: 0,
     verifiedUsers: 0,
@@ -85,7 +86,7 @@ export const useAccessControlHook = () => {
 
   const grantRoleAccess = async (uid: string, grantRole: AuthRole) => {
     try {
-      setIsLoading(true);
+      setIsMutating(true);
       await accessService.grantUserRole(uid, grantRole);
    
       setUsers((prev) =>
@@ -98,41 +99,54 @@ export const useAccessControlHook = () => {
       toast.error(`Failed to update role. Please try again.`);
       return { success: false };
     } finally {
-      setIsLoading(false);
+      setIsMutating(false);
     }
   };
 
   const grantMarketAccess = async (uid: string, grantMarket: string) => {
     try {
-      setIsLoading(true);
+      setIsMutating(true);
       await accessService.grantMarketAccess(uid, grantMarket);
+      const matchedMarket = markets.find((m) => m._id === grantMarket);
+      const marketEntry: any = matchedMarket
+        ? { _id: matchedMarket._id, name: matchedMarket.name }
+        : grantMarket;
+
       setUsers((prev) =>
-        prev.map((u) =>
-          u._id === uid
-            ? { ...u, allowedMarkets: Array.isArray(u.allowedMarkets) ? Array.from(new Set([...u.allowedMarkets, grantMarket])) : [grantMarket] }
-            : u
-        )
+        prev.map((u) => {
+          if (u._id !== uid) return u;
+          const existing = Array.isArray(u.allowedMarkets) ? u.allowedMarkets : [];
+          const alreadyAssigned = existing.some(
+            (m: any) => (typeof m === "string" ? m : m._id) === grantMarket
+          );
+          return {
+            ...u,
+            allowedMarkets: alreadyAssigned ? existing : [...existing, marketEntry],
+          };
+        })
       );
-      toast.success(`Market access granted: ${grantMarket}`);
+      toast.success(
+        `Market access granted: ${matchedMarket?.name || grantMarket}`
+      );
       return { success: true };
     } catch (error) {
       console.error("Failed to grant market access:", error);
       toast.error(`Failed to grant market access. Please try again.`);
       return { success: false };
     } finally {
-      setIsLoading(false);
+      setIsMutating(false);
     }
   };
 
   const revokeAccess = async (uid: string) => {
     try {
-      setIsLoading(true);
+      setIsMutating(true);
       await accessService.revokeUserAccess(uid);
       
       setUsers((prev) =>
         prev.map((u) =>
           u._id === uid
-            ? { ...u, userRole: "user", allowedMarkets: [] }
+            ? { ...u, roles: AuthRole.User, userRole: AuthRole.User, allowedMarkets: [] }
             : u
         )
       );
@@ -143,33 +157,61 @@ export const useAccessControlHook = () => {
       toast.error(`Failed to revoke access. Please try again.`);
       return { success: false };
     } finally {
-      setIsLoading(false);
+      setIsMutating(false);
     }
   };
 
   const inviteAdminUser = async (email: string, fullname: string, role: AuthRole) => {
     try {
-      setIsLoading(true);
-      await accessControlService.inviteAdminUser(email, fullname, role);
-      toast.success("Admin user successfully invited. An email has been sent.");
-      fetchUsers(pagination.page, pagination.limit);
-      return { success: true };
+      setIsMutating(true);
+      const response = await accessControlService.inviteAdminUser(email, fullname, role);
+      const createdUser: IProfile = {
+        ...(response?.payload || {}),
+        _id: response?.payload?._id || `temp-${Date.now()}`,
+        email: response?.payload?.email || email,
+        fullname: response?.payload?.fullname || fullname,
+        roles: response?.payload?.roles || role,
+        userRole: response?.payload?.userRole || role,
+        isVerified: response?.payload?.isVerified ?? false,
+        isActive: response?.payload?.isActive ?? true,
+        allowedMarkets: response?.payload?.allowedMarkets || [],
+      } as IProfile;
+
+      setUsers((prev) => [createdUser, ...prev]);
+      setPagination((prev) => ({
+        ...prev,
+        totalCount: prev.totalCount + 1,
+      }));
+      setStats((prev) => ({
+        ...prev,
+        adminUsers:
+          role === AuthRole.Admin || role === AuthRole.superAdmin
+            ? prev.adminUsers + 1
+            : prev.adminUsers,
+        activeUsers: prev.activeUsers + 1,
+      }));
+      toast.success(response?.message || "Admin user successfully invited. An email has been sent.");
+      return { success: true, data: createdUser };
     } catch (error) {
       console.error("Failed to invite admin user:", error);
       toast.error("Failed to invite user. Please try again.");
       return { success: false };
     } finally {
-      setIsLoading(false);
+      setIsMutating(false);
     }
   };
 
   const verifyUser = useCallback(async (uid: string) => {
     try {
-      setIsLoading(true);
+      setIsMutating(true);
       await accessControlService.verifyUser(uid);
       setUsers((prev) =>
         prev.map((u) => (u._id === uid ? { ...u, isVerified: true } : u))
       );
+      setStats((prev) => ({
+        ...prev,
+        verifiedUsers: prev.verifiedUsers + 1,
+      }));
       toast.success("User verified successfully");
       return { success: true };
     } catch (error) {
@@ -177,15 +219,32 @@ export const useAccessControlHook = () => {
       toast.error("Failed to verify user. Please try again.");
       return { success: false };
     } finally {
-      setIsLoading(false);
+      setIsMutating(false);
     }
   }, []);
 
   const deleteUserAccount = useCallback(async (uid: string) => {
     try {
-      setIsLoading(true);
+      setIsMutating(true);
       await accessControlService.deleteUser(uid);
-      setUsers((prev) => prev.filter((u) => u._id !== uid));
+      setUsers((prev) => {
+        const target = prev.find((u) => u._id === uid);
+        if (target) {
+          setStats((s) => ({
+            activeUsers: target.isActive !== false ? Math.max(0, s.activeUsers - 1) : s.activeUsers,
+            verifiedUsers: target.isVerified ? Math.max(0, s.verifiedUsers - 1) : s.verifiedUsers,
+            adminUsers:
+              target.userRole === AuthRole.Admin || target.roles === AuthRole.Admin
+                ? Math.max(0, s.adminUsers - 1)
+                : s.adminUsers,
+          }));
+        }
+        return prev.filter((u) => u._id !== uid);
+      });
+      setPagination((prev) => ({
+        ...prev,
+        totalCount: Math.max(0, prev.totalCount - 1),
+      }));
       toast.success("User successfully deleted");
       return { success: true };
     } catch (error) {
@@ -193,13 +252,14 @@ export const useAccessControlHook = () => {
       toast.error("Failed to delete user. Please try again.");
       return { success: false };
     } finally {
-      setIsLoading(false);
+      setIsMutating(false);
     }
   }, []);
 
   return {
     users,
     isLoading,
+    isMutating,
     pagination,
     setPagination,
     fetchUsers,

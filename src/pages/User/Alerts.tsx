@@ -80,6 +80,7 @@ export default function Alerts() {
     alert: alerts,
     alertPagination: pagination,
     isLoading,
+    isMutating,
     fetchAlerts,
     createAlert,
     updateAlert,
@@ -531,7 +532,13 @@ export default function Alerts() {
       </Dialog>
 
       {/* Create Alert Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) resetForm();
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -546,17 +553,23 @@ export default function Alerts() {
             <form onSubmit={form.handleSubmit(handleCreate)}>
               {alertFormFields}
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => {
-                  setCreateOpen(false);
-                  resetForm();
-                }}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isMutating}
+                  onClick={() => {
+                    setCreateOpen(false);
+                    resetForm();
+                  }}
+                >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   className="bg-primary-venato hover:bg-primary-venato/90"
+                  disabled={isMutating}
                 >
-                  Create Alert
+                  {isMutating ? "Creating..." : "Create Alert"}
                 </Button>
               </DialogFooter>
             </form>
@@ -565,7 +578,13 @@ export default function Alerts() {
       </Dialog>
 
       {/* Edit Alert Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+      <Dialog
+        open={editOpen}
+        onOpenChange={(open) => {
+          setEditOpen(open);
+          if (!open) resetForm();
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -578,17 +597,23 @@ export default function Alerts() {
             <form onSubmit={form.handleSubmit(handleUpdate)}>
               {alertFormFields}
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => {
-                  setEditOpen(false);
-                  resetForm();
-                }}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isMutating}
+                  onClick={() => {
+                    setEditOpen(false);
+                    resetForm();
+                  }}
+                >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   className="bg-primary-venato hover:bg-primary-venato/90"
+                  disabled={isMutating}
                 >
-                  Save Changes
+                  {isMutating ? "Saving..." : "Save Changes"}
                 </Button>
               </DialogFooter>
             </form>
@@ -606,12 +631,16 @@ export default function Alerts() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isMutating}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
-              onClick={handleDeleteConfirm}
+              disabled={isMutating}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteConfirm();
+              }}
             >
-              Delete
+              {isMutating ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

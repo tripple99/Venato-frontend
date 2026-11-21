@@ -182,11 +182,15 @@ export default function ProductView({
     };
 
     if (editView && updateProductVal) {
-      await updateProductVal(fullProduct);
-      onclose(false);
+      const success = await updateProductVal(fullProduct);
+      if (success) {
+        onclose(false);
+      }
     } else {
-      await addProductVal(fullProduct);
-      onclose(false);
+      const success = await addProductVal(fullProduct);
+      if (success) {
+        onclose(false);
+      }
     }
   };
 

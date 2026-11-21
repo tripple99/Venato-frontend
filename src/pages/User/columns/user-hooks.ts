@@ -11,6 +11,7 @@ import alertService from "@/service/alert.service";
 import {type IPaginationMetadata } from "@/model/pagination.model";
 export const useUserHook = () => {
     const [isLoading, setIsLoading] = useState(true);
+    const [isMutating, setIsMutating] = useState(false);
     const [products, setProducts] = useState<Product[]>([]);
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
     const [inventoryPagination, setInventoryPagination] = useState<IPaginationMetadata>({
@@ -50,14 +51,56 @@ export const useUserHook = () => {
         hasPreviousPage:false,
     });
 
+    const enrichInventoryItem = (item: InventoryItem): InventoryItem => {
+        const enrichedProduct =
+            typeof item.productId === "string"
+                ? products.find((p) => p._id === item.productId) || item.productId
+                : item.productId;
+        const enrichedMarket =
+            typeof item.preferredMarket === "string"
+                ? markets.find((m) => m._id === item.preferredMarket) || item.preferredMarket
+                : item.preferredMarket;
+
+        return {
+            ...item,
+            productId: enrichedProduct as InventoryItem["productId"],
+            preferredMarket: enrichedMarket as InventoryItem["preferredMarket"],
+        };
+    };
+
+    const enrichAlertItem = (item: Alert): Alert => {
+        const enrichedProduct =
+            typeof item.productId === "string"
+                ? products.find((p) => p._id === item.productId) || item.productId
+                : item.productId;
+        const marketId =
+            typeof item.market === "string"
+                ? item.market
+                : (item as any).marketId;
+        const enrichedMarket =
+            typeof item.market === "object" && item.market
+                ? item.market
+                : markets.find((m) => m._id === marketId) || item.market;
+
+        return {
+            ...item,
+            productId: enrichedProduct as Alert["productId"],
+            market: enrichedMarket as Alert["market"],
+        };
+    };
+
     const createInventory = async (payload: any) => {
         try {
-            setIsLoading(true);
+            setIsMutating(true);
             const response = await inventoryService.addInventoryItem(payload);
             if (response?.payload) {
-                setInventory((prev) => [...prev, response.payload]);
-                toast.success("Item added to inventory");
-                return { success: true, data: response.payload };
+                const enriched = enrichInventoryItem(response.payload);
+                setInventory((prev) => [enriched, ...prev]);
+                setInventoryPagination((prev) => ({
+                    ...prev,
+                    totalCount: prev.totalCount + 1,
+                }));
+                return { success: true, data: enriched };
             }
             return { success: false };
         } catch (error) {
@@ -65,20 +108,20 @@ export const useUserHook = () => {
             toast.error("Failed to add item to inventory");
             return { success: false };
         } finally {
-            setIsLoading(false);
+            setIsMutating(false);
         }
     };
 
     const updateInventory = async (id: string, payload: any) => {
         try {
-            setIsLoading(true);
+            setIsMutating(true);
             const response = await inventoryService.updateInventoryItem(id, payload);
             if (response?.payload) {
+                const enriched = enrichInventoryItem(response.payload);
                 setInventory((prev) =>
-                    prev.map((item) => (item._id === id ? response.payload : item))
+                    prev.map((item) => (item._id === id ? enriched : item))
                 );
-                toast.success("Inventory updated successfully");
-                return { success: true, data: response.payload };
+                return { success: true, data: enriched };
             }
             return { success: false };
         } catch (error) {
@@ -86,23 +129,29 @@ export const useUserHook = () => {
             toast.error("Failed to update inventory");
             return { success: false };
         } finally {
-            setIsLoading(false);
+            setIsMutating(false);
         }
     };
 
     const deleteInventory = async (id: string) => {
         try {
-            setIsLoading(true);
-            await inventoryService.removeInventoryItem(id);
-            setInventory((prev) => prev.filter((item) => item._id !== id));
-            toast.success("Item removed from inventory");
-            return { success: true };
+            setIsMutating(true);
+            const response = await inventoryService.removeInventoryItem(id);
+            if (response) {
+                setInventory((prev) => prev.filter((item) => item._id !== id));
+                setInventoryPagination((prev) => ({
+                    ...prev,
+                    totalCount: Math.max(0, prev.totalCount - 1),
+                }));
+                return { success: true };
+            }
+            return { success: false };
         } catch (error) {
             console.error("Failed to delete inventory:", error);
             toast.error("Failed to remove item from inventory");
             return { success: false };
         } finally {
-            setIsLoading(false);
+            setIsMutating(false);
         }
     };
 
@@ -133,12 +182,19 @@ export const useUserHook = () => {
 
    const createAlert = async (payload: any) => {
     try {
-        setIsLoading(true);
+        setIsMutating(true);
         const response = await alertService.createAlert(payload);
         if (response?.payload) {
-            setAlert((prev) => [...prev, response.payload]);
-            toast.success("Alert created successfully");
-            return { success: true, data: response.payload };
+            const enriched = enrichAlertItem({
+                ...response.payload,
+                market: response.payload.market || payload.marketId,
+            });
+            setAlert((prev) => [enriched, ...prev]);
+            setAlertPagination((prev) => ({
+                ...prev,
+                totalCount: prev.totalCount + 1,
+            }));
+            return { success: true, data: enriched };
         }
         return { success: false };
     } catch (error) {
@@ -146,18 +202,18 @@ export const useUserHook = () => {
         toast.error("Failed to create alert");
         return { success: false };
     } finally {
-        setIsLoading(false);
+        setIsMutating(false);
     }
    };
 
    const updateAlert = async (id: string, payload: any) => {
     try {
-        setIsLoading(true);
+        setIsMutating(true);
         const response = await alertService.updateAlert(id, payload);
         if (response?.payload) {
-            setAlert((prev) => prev.map((item) => (item._id === id ? response.payload : item)));
-            toast.success("Alert updated successfully");
-            return { success: true, data: response.payload };
+            const enriched = enrichAlertItem(response.payload);
+            setAlert((prev) => prev.map((item) => ((item._id || item.id) === id ? enriched : item)));
+            return { success: true, data: enriched };
         }
         return { success: false };
     } catch (error) {
@@ -165,23 +221,29 @@ export const useUserHook = () => {
         toast.error("Failed to update alert");
         return { success: false };
     } finally {
-        setIsLoading(false);
+        setIsMutating(false);
     }
    };
 
    const deleteAlert = async (id: string) => {
     try {
-        setIsLoading(true);
-        await alertService.deleteAlert(id);
-        setAlert((prev) => prev.filter((item) => item._id !== id));
-        toast.success("Alert deleted successfully");
-        return { success: true };
+        setIsMutating(true);
+        const response = await alertService.deleteAlert(id);
+        if (response) {
+            setAlert((prev) => prev.filter((item) => (item._id || item.id) !== id));
+            setAlertPagination((prev) => ({
+                ...prev,
+                totalCount: Math.max(0, prev.totalCount - 1),
+            }));
+            return { success: true };
+        }
+        return { success: false };
     } catch (error) {
         console.error("Failed to delete alert:", error);
         toast.error("Failed to delete alert");
         return { success: false };
     } finally {
-        setIsLoading(false);
+        setIsMutating(false);
     }
    };
    const fetchAlerts = useCallback(async (page = 1, limit = 10) => {
@@ -277,6 +339,7 @@ export const useUserHook = () => {
 
     return {
         isLoading,
+        isMutating,
         markets,
         marketPagination,
         fetchAllMarkets,

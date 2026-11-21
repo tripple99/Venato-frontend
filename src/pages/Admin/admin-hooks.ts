@@ -19,6 +19,7 @@ import userService from "@/service/user.service";
 export const useProductHook = () => {
   const [products, setProducts] = useState<Products[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMutating, setIsMutating] = useState(false);
   const [markets, setMarkets] = useState<IMarketData[]>([]);
   const [pagination, setPagination] = useState<IPaginationMetadata>({
     currentPage: 1,
@@ -29,10 +30,19 @@ export const useProductHook = () => {
     hasPreviousPage: false,
   });
 
-  const mapToProducts = (p: Product): Products => {
+  const mapToProducts = useCallback((p: Product, fallbackMarkets: IMarketData[] = []): Products => {
+    const rawMarket = p.market as Product["market"] | string | undefined;
+    const marketObj =
+      typeof rawMarket === "string"
+        ? fallbackMarkets.find((m) => m._id === rawMarket)
+        : rawMarket;
+
     const location: ILocation = {
-      ...p?.market?.location,
-      country: p?.market?.location?.country || "Nigeria"
+      state: marketObj?.location?.state || "",
+      code: marketObj?.location?.code || "",
+      LGA: marketObj?.location?.LGA || "",
+      coordinates: marketObj?.location?.coordinates,
+      country: marketObj?.location?.country || "Nigeria",
     };
 
     return {
@@ -44,68 +54,77 @@ export const useProductHook = () => {
       location: location,
       quantityAvailable: p.quantityAvailable,
       market: {
-        _id: p.market._id,
-        name: p.market.name as MarketNames,
+        _id: marketObj?._id || (typeof rawMarket === "string" ? rawMarket : ""),
+        name: (marketObj?.name || "") as MarketNames,
         location: location,
       },
       images: p.images || [],
       created_at: new Date(),
       update_at: new Date(),
     };
-  };
+  }, []);
 
 
   const createProduct = async (product: IMarketProduct) => {
     try {
-      setIsLoading(true);
-      console.log(product);
+      setIsMutating(true);
       const res = await productService.createProduct(product);
-      setIsLoading(false);
-     
       const data = res?.payload;
-    
+
       if (data) {
-        setProducts((prev) => [mapToProducts(data), ...prev]);
+        setProducts((prev) => [mapToProducts(data, markets), ...prev]);
+        setPagination((prev) => ({
+          ...prev,
+          totalCount: prev.totalCount + 1,
+        }));
         return { success: true };
       }
       return { success: false };
     } catch (error) {
-      setIsLoading(false);
       console.error("Error creating product:", error);
       return { success: false };
+    } finally {
+      setIsMutating(false);
     }
   };
 
   const updateProducts = async (id: string, product: IMarketProduct) => {
     try {
-      setIsLoading(true);
+      setIsMutating(true);
       const res = await productService.updateProduct(id, product);
-      setIsLoading(false);
       if (res?.payload) {
-        setProducts((prev) => prev.map((p) => p._id === id ? mapToProducts(res.payload) : p));
+        setProducts((prev) =>
+          prev.map((p) => (p._id === id ? mapToProducts(res.payload, markets) : p)),
+        );
         return { success: true };
       }
       return { success: false };
     } catch (error) {
-      setIsLoading(false);
       console.error("Error updating product:", error);
       return { success: false };
+    } finally {
+      setIsMutating(false);
     }
   };
+
   const deleteProduct = async (id: string, marketId: string) => {
     try {
-      setIsLoading(true);
+      setIsMutating(true);
       const res = await productService.deleteProduct(id, marketId);
-      setIsLoading(false);
-      if (res?.payload) {
+      if (res) {
         setProducts((prev) => prev.filter((p) => p._id !== id));
+        setPagination((prev) => ({
+          ...prev,
+          totalCount: Math.max(0, prev.totalCount - 1),
+        }));
         return { success: true };
       }
       return { success: false };
     } catch (error) {
-      setIsLoading(false);
       console.error("Error deleting product:", error);
       return { success: false };
+    } finally {
+      setIsMutating(false);
     }
   };
   const getProducts = useCallback(
@@ -117,7 +136,7 @@ export const useProductHook = () => {
        
         setIsLoading(false);
         if (res?.payload) {
-          setProducts(res.payload.data.map(mapToProducts));
+          setProducts(res.payload.data.map((p) => mapToProducts(p)));
           setPagination({
             currentPage: res.payload.currentPage,
             limit: res.payload.limit,
@@ -128,7 +147,6 @@ export const useProductHook = () => {
           });
         }
          const marketId = useAuthStore.getState().user?.userMarket;
-         console.log(marketId);
          if(!marketId){
             const profile = await userService.getMyProfile()
        
@@ -144,7 +162,7 @@ export const useProductHook = () => {
         setIsLoading(false);
       }
     },
-    [],
+    [mapToProducts],
   );
 
   const fetchUserMarkets = useCallback(async (ids: string | string[]) => {
@@ -168,6 +186,7 @@ export const useProductHook = () => {
   return {
     products,
     isLoading,
+    isMutating,
     markets,
     pagination,
     getProducts,

@@ -45,7 +45,6 @@ import {
 import { createMarketColumns } from "./columns/market-columns";
 import type { IMarketData } from "@/model/market.model";
 import marketService from "@/service/market.service";
-import { toast } from "sonner";
 
 // Mock data for development
 const mockMarkets: IMarketData[] = [
@@ -93,6 +92,7 @@ type MarketFormValues = z.infer<typeof marketSchema>;
 export default function MarketManagement() {
   const [markets, setMarkets] = useState<IMarketData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMutating, setIsMutating] = useState(false);
   const [selectedMarket, setSelectedMarket] = useState<IMarketData | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
@@ -171,59 +171,47 @@ export default function MarketManagement() {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!marketToDelete?._id) return;
+    if (!marketToDelete?._id || isMutating) return;
+    setIsMutating(true);
     try {
-      await marketService.deleteMarket(marketToDelete._id);
-      setMarkets((prev) => prev.filter((m) => m._id !== marketToDelete._id));
-    } catch {
-      setMarkets((prev) => prev.filter((m) => m._id !== marketToDelete._id));
-      toast.success("Market deleted");
+      const response = await marketService.deleteMarket(marketToDelete._id);
+      if (response) {
+        setMarkets((prev) => prev.filter((m) => m._id !== marketToDelete._id));
+        setDeleteOpen(false);
+        setMarketToDelete(null);
+      }
     } finally {
-      setDeleteOpen(false);
-      setMarketToDelete(null);
+      setIsMutating(false);
     }
   };
 
   const onSubmit = async (data: MarketFormValues) => {
-    if (isEditMode && selectedMarket?._id) {
-      try {
-        await marketService.updateMarket(selectedMarket._id, data as IMarketData);
-        setMarkets((prev) =>
-          prev.map((m) =>
-            m._id === selectedMarket._id ? { ...m, ...(data as unknown as IMarketData) } : m
-          )
-        );
-      } catch {
-        setMarkets((prev) =>
-          prev.map((m) =>
-            m._id === selectedMarket._id ? { ...m, ...(data as unknown as IMarketData) } : m
-          )
-        );
-        toast.success("Market updated");
-      }
-    } else {
-      try {
+    if (isMutating) return;
+    setIsMutating(true);
+    try {
+      if (isEditMode && selectedMarket?._id) {
+        const response = await marketService.updateMarket(selectedMarket._id, data as IMarketData);
+        if (response) {
+          const updatedMarket = response.payload || {
+            ...selectedMarket,
+            ...(data as unknown as IMarketData),
+          };
+          setMarkets((prev) =>
+            prev.map((m) => (m._id === selectedMarket._id ? updatedMarket : m))
+          );
+          setFormOpen(false);
+        }
+      } else {
         const response = await marketService.createMarket(data as IMarketData);
         if (response?.payload) {
-          setMarkets((prev) => [...prev, response.payload]);
-        } else {
-          const newMarket: IMarketData = {
-            _id: `m-${Date.now()}`,
-            ...data,
-          } as IMarketData;
-          setMarkets((prev) => [...prev, newMarket]);
-          toast.success("Market created");
+          setMarkets((prev) => [response.payload, ...prev]);
+          setFormOpen(false);
+          form.reset();
         }
-      } catch {
-        const newMarket: IMarketData = {
-          _id: `m-${Date.now()}`,
-          ...data,
-        } as IMarketData;
-        setMarkets((prev) => [...prev, newMarket]);
-        toast.success("Market created");
       }
+    } finally {
+      setIsMutating(false);
     }
-    setFormOpen(false);
   };
 
   const columns = useMemo(
@@ -457,14 +445,21 @@ export default function MarketManagement() {
                 />
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setFormOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setFormOpen(false)} disabled={isMutating}>
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   className="bg-primary-venato hover:bg-primary-venato/90"
+                  disabled={isMutating}
                 >
-                  {isEditMode ? "Save Changes" : "Create Market"}
+                  {isMutating
+                    ? isEditMode
+                      ? "Saving..."
+                      : "Creating..."
+                    : isEditMode
+                      ? "Save Changes"
+                      : "Create Market"}
                 </Button>
               </DialogFooter>
             </form>
@@ -483,12 +478,16 @@ export default function MarketManagement() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isMutating}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
-              onClick={handleDeleteConfirm}
+              disabled={isMutating}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteConfirm();
+              }}
             >
-              Delete
+              {isMutating ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

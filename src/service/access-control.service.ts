@@ -1,4 +1,4 @@
-import type { PaginatedApiResponse } from "@/model/api";
+import type { ApiResponse, PaginatedApiResponse } from "@/model/api";
 import apiClient from "@/api/api-client";
 import { handleAnyError } from "@/handlers/GlobalErrorHandler";
 import type { IProfile } from "@/model/user.model";
@@ -19,9 +19,9 @@ class AccessControlService {
         }
     }
 
-    public async inviteAdminUser(email: string, fullname: string, role: AuthRole): Promise<IProfile> {
+    public async inviteAdminUser(email: string, fullname: string, role: AuthRole): Promise<ApiResponse<IProfile>> {
         try {
-            const response = await apiClient.post<IProfile>("/admin/users", {
+            const response = await apiClient.post<ApiResponse<IProfile>>("/admin/users", {
                 email,
                 fullname,
                 role

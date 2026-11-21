@@ -60,6 +60,7 @@ export default function Inventory() {
     inventory: items,
     inventoryPagination: pagination,
     isLoading,
+    isMutating,
     fetchInventory,
     createInventory,
     deleteInventory,
@@ -362,11 +363,23 @@ export default function Inventory() {
                 />
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setAddOpen(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isMutating}
+                  onClick={() => {
+                    setAddOpen(false);
+                    form.reset();
+                  }}
+                >
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-primary-venato hover:bg-primary-venato/90">
-                  Add Item
+                <Button
+                  type="submit"
+                  className="bg-primary-venato hover:bg-primary-venato/90"
+                  disabled={isMutating}
+                >
+                  {isMutating ? "Adding..." : "Add Item"}
                 </Button>
               </DialogFooter>
             </form>
@@ -384,12 +397,16 @@ export default function Inventory() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isMutating}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
-              onClick={handleDeleteConfirm}
+              disabled={isMutating}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteConfirm();
+              }}
             >
-              Remove
+              {isMutating ? "Removing..." : "Remove"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

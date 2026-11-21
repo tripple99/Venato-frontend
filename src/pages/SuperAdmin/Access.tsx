@@ -50,22 +50,23 @@ import {
   Calendar,
   Activity,
   UserPlus,
+  UserCog,
+  Store,
 } from "lucide-react";
 import { createAccessColumns } from "./columns/access-columns";
 import type { IProfile } from "@/model/user.model";
 import { AuthRole } from "@/model/auth.model";
 import { useAccessControlHook } from "./columns/super-admin-hooks";
 import type { IAuth } from "@/types/auth.types";
+import { toast } from "sonner";
 
-const accessSchema = z.object({
-  grantType: z.enum(["role", "market"]),
-  grantRole: z.nativeEnum(AuthRole).optional(),
-  grantMarket: z.string().optional(),
-}).refine(data => {
-  if (data.grantType === "role") return !!data.grantRole;
-  if (data.grantType === "market") return !!data.grantMarket;
-  return true;
-}, { message: "Selection is required" });
+const roleSchema = z.object({
+  grantRole: z.nativeEnum(AuthRole),
+});
+
+const marketSchema = z.object({
+  grantMarket: z.string().min(1, "Please select a market"),
+});
 
 const inviteSchema = z.object({
   fullname: z.string().min(2, { message: "Fullname must be at least 2 characters" }),
@@ -76,7 +77,8 @@ const inviteSchema = z.object({
   ),
 });
 
-type AccessFormValues = z.infer<typeof accessSchema>;
+type RoleFormValues = z.infer<typeof roleSchema>;
+type MarketFormValues = z.infer<typeof marketSchema>;
 type InviteFormValues = z.infer<typeof inviteSchema>;
 
 
@@ -84,6 +86,7 @@ export default function AccessControl() {
   const {
     users,
     isLoading,
+    isMutating,
     pagination,
     setPagination,
     fetchUsers,
@@ -100,9 +103,10 @@ export default function AccessControl() {
     stats,
   } = useAccessControlHook();
 
-  const [selectedUser, setSelectedUser] = useState<IAuth | null>(null);
+  const [selectedUser, setSelectedUser] = useState<IProfile | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [grantOpen, setGrantOpen] = useState(false);
+  const [marketOpen, setMarketOpen] = useState(false);
   const [revokeOpen, setRevokeOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
@@ -111,11 +115,16 @@ export default function AccessControl() {
   const [userToVerify, setUserToVerify] = useState<IProfile | null>(null);
   const [userToDelete, setUserToDelete] = useState<IProfile | null>(null);
 
-  const form = useForm<AccessFormValues>({
-    resolver: zodResolver(accessSchema),
+  const roleForm = useForm<RoleFormValues>({
+    resolver: zodResolver(roleSchema),
     defaultValues: {
-      grantType: "role",
       grantRole: AuthRole.User,
+    },
+  });
+
+  const marketForm = useForm<MarketFormValues>({
+    resolver: zodResolver(marketSchema),
+    defaultValues: {
       grantMarket: "",
     },
   });
@@ -128,8 +137,6 @@ export default function AccessControl() {
       role: AuthRole.Admin,
     },
   });
-
-  const watchGrantType = form.watch("grantType");
 
   useEffect(() => {
     fetchUsers(pagination.page, pagination.limit);
@@ -158,32 +165,48 @@ export default function AccessControl() {
 
   const handleGrantRole = useCallback((user: IProfile) => {
     setSelectedUser(user);
-    form.reset({
-      grantType: "role",
-      grantRole: user.roles || AuthRole.User,
-      grantMarket: "",
+    roleForm.reset({
+      grantRole: (user.userRole as AuthRole) || user.roles || AuthRole.User,
     });
     setGrantOpen(true);
-  }, [form]);
+  }, [roleForm]);
+
+  const handleAssignMarket = useCallback((user: IProfile) => {
+    const effectiveRole = (user.userRole || user.roles || "").toLowerCase();
+    if (effectiveRole !== AuthRole.Admin.toLowerCase()) {
+      toast.error("Only users with the Admin role can be assigned a market.");
+      return;
+    }
+    setSelectedUser(user);
+    marketForm.reset({ grantMarket: "" });
+    setMarketOpen(true);
+  }, [marketForm]);
 
   const handleRevokeClick = useCallback((user: IProfile) => {
     setUserToRevoke(user);
     setRevokeOpen(true);
   }, []);
 
-  const handleGrantSubmit = async (data: AccessFormValues) => {
+  const handleRoleSubmit = async (data: RoleFormValues) => {
     if (!selectedUser) return;
-    
-    let result = { success: false };
-    if (data.grantType === "role" && data.grantRole) {
-      result = await grantRoleAccess(selectedUser._id, data.grantRole);
-    } else if (data.grantType === "market" && data.grantMarket) {
-      result = await grantMarketAccess(selectedUser._id, data.grantMarket);
-    }
-
-    if (result.success) {
+    const { success } = await grantRoleAccess(selectedUser._id, data.grantRole);
+    if (success) {
       setGrantOpen(false);
-      form.setValue("grantMarket", "");
+    }
+  };
+
+  const handleMarketSubmit = async (data: MarketFormValues) => {
+    if (!selectedUser) return;
+    const effectiveRole = (selectedUser.userRole || selectedUser.roles || "").toLowerCase();
+    if (effectiveRole !== AuthRole.Admin.toLowerCase()) {
+      toast.error("Only users with the Admin role can be assigned a market.");
+      setMarketOpen(false);
+      return;
+    }
+    const { success } = await grantMarketAccess(selectedUser._id, data.grantMarket);
+    if (success) {
+      setMarketOpen(false);
+      marketForm.reset({ grantMarket: "" });
     }
   };
 
@@ -235,8 +258,23 @@ export default function AccessControl() {
   };
 
   const columns = useMemo(
-    () => createAccessColumns(handleView, handleGrantRole, handleRevokeClick, handleVerify, handleDelete),
-    [handleView, handleGrantRole, handleRevokeClick, handleVerify, handleDelete]
+    () =>
+      createAccessColumns(
+        handleView,
+        handleGrantRole,
+        handleAssignMarket,
+        handleRevokeClick,
+        handleVerify,
+        handleDelete
+      ),
+    [
+      handleView,
+      handleGrantRole,
+      handleAssignMarket,
+      handleRevokeClick,
+      handleVerify,
+      handleDelete,
+    ]
   );
 
   const adminCount = stats.adminUsers;
@@ -390,9 +428,9 @@ export default function AccessControl() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {selectedUser.allowedMarkets && selectedUser.allowedMarkets.length > 0 ? (
-                    selectedUser.allowedMarkets.map((market) => (
-                      <Badge key={market} variant="outline">
-                        {market}
+                    selectedUser.allowedMarkets.map((market: any) => (
+                      <Badge key={market._id || market} variant="outline">
+                        {market.name || market}
                       </Badge>
                     ))
                   ) : (
@@ -421,109 +459,132 @@ export default function AccessControl() {
         </DialogContent>
       </Dialog>
 
-      {/* Grant Role / Market Dialog */}
+      {/* Change User Role Dialog */}
       <Dialog open={grantOpen} onOpenChange={setGrantOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-primary-venato" />
-              Grant Access
+              <UserCog className="h-5 w-5 text-amber-600" />
+              Change User Role
             </DialogTitle>
             <DialogDescription>
-              Update role or market access for {selectedUser?.fullname}
+              Update the system role for {selectedUser?.fullname}
             </DialogDescription>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleGrantSubmit)}>
+          <Form {...roleForm}>
+            <form onSubmit={roleForm.handleSubmit(handleRoleSubmit)}>
               <div className="space-y-4 py-4">
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant={watchGrantType === "role" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => form.setValue("grantType", "role")}
-                    className={watchGrantType === "role" ? "bg-primary-venato hover:bg-primary-venato/90" : ""}
-                  >
-                    Grant Role
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={watchGrantType === "market" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => form.setValue("grantType", "market")}
-                    className={watchGrantType === "market" ? "bg-primary-venato hover:bg-primary-venato/90" : ""}
-                  >
-                    Grant Market Access
-                  </Button>
-                </div>
-
-                {watchGrantType === "role" ? (
-                  <FormField
-                    control={form.control}
-                    name="grantRole"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Select Role</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {Object.values(AuthRole).map((role) => (
-                              <SelectItem key={role} value={role} className="capitalize">
-                                {role}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ) : (
-                  <FormField
-                    control={form.control}
-                    name="grantMarket"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Select Market</FormLabel>
-                        <Select value={field.value} onValueChange={field.onChange}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Choose a market" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {markets.map((market) => (
-                              <SelectItem key={market._id} value={market._id}>
-                                {market.name}
-                              </SelectItem>
-                            ))}
-                            {marketPagination.hasNextPage && (
-                              <div ref={lastMarketElementRef} className="h-4" />
-                            )}
-                            {marketPagination.isLoading && (
-                              <div className="p-2 text-sm text-center text-muted-foreground">Loading more...</div>
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
+                <FormField
+                  control={roleForm.control}
+                  name="grantRole"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Role</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Object.values(AuthRole).map((role) => (
+                            <SelectItem key={role} value={role} className="capitalize">
+                              {role}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setGrantOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setGrantOpen(false)} disabled={isMutating}>
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   className="bg-primary-venato hover:bg-primary-venato/90"
+                  disabled={isMutating}
                 >
-                  Grant Access
+                  {isMutating ? "Updating..." : "Update Role"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Market Dialog (Admin only) */}
+      <Dialog
+        open={marketOpen}
+        onOpenChange={(open) => {
+          setMarketOpen(open);
+          if (!open) marketForm.reset({ grantMarket: "" });
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Store className="h-5 w-5 text-emerald-600" />
+              Assign Market
+            </DialogTitle>
+            <DialogDescription>
+              Assign a market to admin {selectedUser?.fullname}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...marketForm}>
+            <form onSubmit={marketForm.handleSubmit(handleMarketSubmit)}>
+              <div className="space-y-4 py-4">
+                <FormField
+                  control={marketForm.control}
+                  name="grantMarket"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Select Market</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose a market" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {markets.map((market) => (
+                            <SelectItem key={market._id} value={market._id}>
+                              {market.name}
+                            </SelectItem>
+                          ))}
+                          {marketPagination.hasNextPage && (
+                            <div ref={lastMarketElementRef} className="h-4" />
+                          )}
+                          {marketPagination.isLoading && (
+                            <div className="p-2 text-sm text-center text-muted-foreground">
+                              Loading more...
+                            </div>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setMarketOpen(false)}
+                  disabled={isMutating}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-primary-venato hover:bg-primary-venato/90"
+                  disabled={isMutating}
+                >
+                  {isMutating ? "Assigning..." : "Assign Market"}
                 </Button>
               </DialogFooter>
             </form>
@@ -542,12 +603,16 @@ export default function AccessControl() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isMutating}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
-              onClick={handleRevokeConfirm}
+              disabled={isMutating}
+              onClick={(e) => {
+                e.preventDefault();
+                handleRevokeConfirm();
+              }}
             >
-              Revoke Access
+              {isMutating ? "Revoking..." : "Revoke Access"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -564,13 +629,16 @@ export default function AccessControl() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isMutating}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-primary-venato hover:bg-primary-venato/90"
-              onClick={handleVerifyConfirm}
-              disabled={isLoading}
+              onClick={(e) => {
+                e.preventDefault();
+                handleVerifyConfirm();
+              }}
+              disabled={isMutating}
             >
-              {isLoading ? "Verifying..." : "Verify Account"}
+              {isMutating ? "Verifying..." : "Verify Account"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -587,20 +655,29 @@ export default function AccessControl() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isMutating}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700"
-              onClick={handleDeleteConfirm}
-              disabled={isLoading}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDeleteConfirm();
+              }}
+              disabled={isMutating}
             >
-              {isLoading ? "Deleting..." : "Delete Permanently"}
+              {isMutating ? "Deleting..." : "Delete Permanently"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       {/* Create Admin Dialog */}
-      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+      <Dialog
+        open={inviteOpen}
+        onOpenChange={(open) => {
+          setInviteOpen(open);
+          if (!open) inviteForm.reset();
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -664,15 +741,15 @@ export default function AccessControl() {
                 />
               </div>
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setInviteOpen(false)}>
+                <Button type="button" variant="outline" onClick={() => setInviteOpen(false)} disabled={isMutating}>
                   Cancel
                 </Button>
                 <Button
                   type="submit"
                   className="bg-primary-venato hover:bg-primary-venato/90"
-                  disabled={isLoading}
+                  disabled={isMutating}
                 >
-                  {isLoading ? "Inviting..." : "Send Invite"}
+                  {isMutating ? "Inviting..." : "Send Invite"}
                 </Button>
               </DialogFooter>
             </form>
