@@ -3,19 +3,15 @@ import { Label } from "@/components/ui/label";
 import {
   InputOTP,
   InputOTPGroup,
+  InputOTPSeparator,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import authService from "@/service/auth.service";
 import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import z from "zod";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { ArrowLeft, MailCheck } from "lucide-react";
 import { OtpPurpose } from "@/model/auth.model";
-
-const otpSchema = z.object({
-  otp: z.string().regex(/^\d{6}$/, "OTP must be exactly 6 digits"),
-});
 
 export default function VerifyOtpPage() {
   const [otp, setOtp] = useState("");
@@ -44,15 +40,6 @@ export default function VerifyOtpPage() {
     event.preventDefault();
 
     if (isSubmitting) return;
-
-    const validation = otpSchema.safeParse({ otp });
-
-    if (!validation.success) {
-      toast.error("Invalid Code", {
-        description: "Please enter the complete 6-digit verification code.",
-      });
-      return;
-    }
 
     try {
       setIsSubmitting(true);
@@ -132,113 +119,102 @@ export default function VerifyOtpPage() {
     }
   };
 
-  return (
-    <div className="relative flex min-h-[80vh] flex-col items-center justify-center overflow-hidden bg-background px-4 transition-colors duration-500">
-      <form
-        onSubmit={onSubmit}
-        className="z-10 w-full max-w-md rounded-[32px] border border-white/20 bg-white/70 p-6 sm:p-8 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] backdrop-blur-2xl transition-all duration-500 dark:border-slate-800 dark:bg-slate-900/40 dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)]"
-      >
-        <div className="mb-10 text-center sm:text-left">
-          <div className="mb-6 flex items-center justify-center gap-4 sm:justify-start">
-            <div className="rounded-2xl bg-primary/10 p-3 ring-1 ring-primary/20 dark:bg-primary/20">
-              <ShieldCheck className="h-6 w-6 text-primary" />
-            </div>
-          </div>
+  const slotClassName =
+    "h-12 w-11 sm:h-14 sm:w-12 text-lg font-semibold border-slate-200 dark:border-slate-700 bg-background data-[active=true]:border-primary-venato data-[active=true]:ring-primary-venato/25";
 
-          <h1 className="mb-2 text-3xl font-bold tracking-tight text-foreground">
+  return (
+    <div className="mx-auto flex w-full max-w-md flex-col gap-6 py-4">
+      <div className="flex flex-col items-center gap-3 text-center sm:items-start sm:text-left">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-venato/10 text-primary-venato">
+          <MailCheck className="h-6 w-6" />
+        </div>
+
+        <div className="space-y-1.5">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Verify OTP
           </h1>
-
-          <p className="text-[15px] leading-relaxed text-muted-foreground">
-            We've sent a 6-digit verification code to{" "}
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Enter the verification code sent to{" "}
             <span className="break-all font-semibold text-foreground">
               {activeEmail}
             </span>
             .
           </p>
         </div>
+      </div>
 
-        <div className="space-y-10">
-          <div className="flex flex-col items-center justify-center space-y-4 overflow-x-hidden">
-            <Label
-              htmlFor="otp"
-              className="ml-1 w-full text-left text-sm font-semibold text-foreground/80"
-            >
-              Verification Code
-            </Label>
+      <form onSubmit={onSubmit} className="space-y-6">
+        <div className="space-y-3">
+          <Label
+            htmlFor="otp"
+            className="block text-center text-sm font-medium text-foreground sm:text-left"
+          >
+            Verification Code
+          </Label>
 
+          <div className="flex justify-center sm:justify-start">
             <InputOTP
+              id="otp"
               maxLength={6}
               value={otp}
-              onChange={(value) => setOtp(value.replace(/\D/g, ""))}
+              onChange={setOtp}
+              disabled={isSubmitting}
+              autoFocus
             >
-              <InputOTPGroup className="flex-nowrap gap-1 sm:gap-2 md:gap-3">
-                {Array.from({ length: 6 }).map((_, index) => (
-                  <InputOTPSlot
-                    key={index}
-                    index={index}
-                    className="
-                      h-10 w-10
-                      sm:h-12 sm:w-12
-                      md:h-14 md:w-14
-                      rounded-xl
-                      sm:rounded-2xl
-                      border-slate-200
-                      dark:border-slate-700
-                      bg-white/50
-                      dark:bg-slate-900/50
-                      text-lg
-                      sm:text-xl
-                      md:text-2xl
-                      font-bold
-                      shadow-sm
-                      transition-all
-                      focus-visible:ring-2
-                      focus-visible:ring-primary
-                      focus:border-primary
-                    "
-                  />
-                ))}
+              <InputOTPGroup>
+                <InputOTPSlot index={0} className={slotClassName} />
+                <InputOTPSlot index={1} className={slotClassName} />
+                <InputOTPSlot index={2} className={slotClassName} />
+              </InputOTPGroup>
+              <InputOTPSeparator className="text-muted-foreground" />
+              <InputOTPGroup>
+                <InputOTPSlot index={3} className={slotClassName} />
+                <InputOTPSlot index={4} className={slotClassName} />
+                <InputOTPSlot index={5} className={slotClassName} />
               </InputOTPGroup>
             </InputOTP>
           </div>
-
-          <div className="space-y-4 pt-4">
-            <Button
-              type="submit"
-              className="h-14 w-full cursor-pointer rounded-2xl bg-primary-venato text-base font-bold text-white shadow-xl shadow-primary/10 transition-all hover:bg-primary/80 active:scale-[0.98] disabled:opacity-70 dark:text-[#111827] dark:hover:bg-gray-200"
-              disabled={otp.length !== 6 || isSubmitting}
-              loading={isSubmitting}
-              loadingText="Verifying..."
-            >
-              Verify Code
-            </Button>
-
-            <Button
-              type="button"
-              variant="ghost"
-              className="flex h-14 w-full cursor-pointer items-center justify-center gap-2 rounded-2xl font-medium text-muted-foreground transition-all hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5"
-              onClick={() => navigate("/auth/forgot-password")}
-              disabled={isSubmitting}
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-          </div>
         </div>
 
-        <div className="mt-10 text-center text-sm font-medium text-muted-foreground">
-          Didn't receive a code?
-          <button
-            type="button"
-            onClick={handleResend}
-            disabled={isResending}
-            className="ml-1 cursor-pointer font-bold text-primary underline-offset-4 transition-colors hover:text-primary/80 disabled:cursor-not-allowed disabled:opacity-50"
+        <div className="space-y-3 pt-1">
+          <Button
+            type="submit"
+            className="h-11 w-full cursor-pointer rounded-full bg-primary-venato font-semibold text-white transition-colors hover:bg-primary-venato-hover"
+            disabled={isSubmitting}
+            loading={isSubmitting}
+            loadingText="Verifying..."
           >
-            {isResending ? "Sending..." : "Resend Code"}
-          </button>
+            Verify Code
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 w-full cursor-pointer rounded-full border-slate-200 font-medium text-muted-foreground hover:text-foreground dark:border-slate-700"
+            onClick={() =>
+              navigate(
+                isRegistrationFlow ? "/auth/login" : "/auth/forgot-password",
+              )
+            }
+            disabled={isSubmitting}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {isRegistrationFlow ? "Back to Sign In" : "Back"}
+          </Button>
         </div>
       </form>
+
+      <p className="text-center text-sm text-muted-foreground">
+        Didn&apos;t receive a code?{" "}
+        <button
+          type="button"
+          onClick={handleResend}
+          disabled={isResending}
+          className="cursor-pointer font-semibold text-primary-venato underline-offset-4 transition-colors hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isResending ? "Sending..." : "Resend Code"}
+        </button>
+      </p>
     </div>
   );
 }
