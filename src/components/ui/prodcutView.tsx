@@ -219,18 +219,15 @@ export default function ProductView({
     };
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3">
-        <Card className="relative w-5/6 max-w-xl mx-auto rounded-2xl shadow-2xl bg-background border-border overflow-hidden transition-all duration-300">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4">
+        <Card className="relative w-full max-w-xl max-h-[85vh] flex flex-col mx-auto rounded-2xl shadow-2xl bg-background border-border overflow-hidden transition-all duration-300">
           {isLoading && (
-            <div className="absolute inset-0 z-[60] flex flex-col items-center justify-center bg-background/60 backdrop-blur-sm animate-in fade-in duration-300">
-              <Loader2 className="h-10 w-10 text-primary-venato animate-spin mb-4" />
-              <p className="text-lg font-bold text-foreground">Processing Product...</p>
-              <p className="text-sm text-muted-foreground animate-pulse">
-                {editView ? "Updating" : "Creating"} product data and media
-              </p>
+            <div className="absolute inset-0 z-[60] flex items-center justify-center bg-background/60 backdrop-blur-sm animate-in fade-in duration-300">
+              <Loader2 className="h-10 w-10 text-primary-venato animate-spin" />
             </div>
           )}
           <form
+            className="flex flex-col flex-1 min-h-0"
             onSubmit={handleSubmit(handleFormAction)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && activeStep === 1) {
@@ -239,7 +236,7 @@ export default function ProductView({
               }
             }}
           >
-            <CardHeader className="p-6 border-b bg-muted/30 dark:bg-muted/10">
+            <CardHeader className="px-6 py-4 shrink-0 border-b bg-muted/30 dark:bg-muted/10">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="bg-primary-venato/10 p-2 rounded-lg">
@@ -302,7 +299,7 @@ export default function ProductView({
             </Stepper>
           </CardHeader>
 
-          <CardContent className="p-0 scrollbar-hide max-h-[60vh] overflow-y-auto">
+          <CardContent className="p-0 flex-1 min-h-0 overflow-y-auto scrollbar-hide">
             <Stepper value={activeStep}>
               {/* STEP 1: PRODUCT DETAILS */}
               <StepperContent
@@ -593,7 +590,7 @@ export default function ProductView({
             </Stepper>
           </CardContent>
 
-          <CardFooter className="p-6 border-t bg-muted/30 dark:bg-muted/10 flex justify-between items-center">
+          <CardFooter className="px-6 py-4 shrink-0 border-t bg-muted/30 dark:bg-muted/10 flex justify-between items-center">
             <div className="flex items-center gap-2">
               {activeStep === 2 && (
                 <Button
@@ -637,10 +634,7 @@ export default function ProductView({
                   className="bg-primary-venato hover:bg-primary-venato-hover text-white gap-2 font-bold px-6 shadow-lg shadow-primary-venato/20 rounded-full"
                 >
                   {isLoading ? (
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Processing...</span>
-                    </div>
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <>
                       {editView ? "Update Product" : "Publish Product"}

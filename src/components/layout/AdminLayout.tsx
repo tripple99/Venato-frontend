@@ -19,6 +19,7 @@ import {
   LayoutList,
   Menu,
   PanelLeft,
+  Loader2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, Outlet, useLocation, useNavigate, Navigate } from "react-router-dom";
@@ -465,7 +466,7 @@ export default function AdminLayout() {
                 onClick={handleLogout}
                 disabled={isLoggingOut}
               >
-                {isLoggingOut ? "Logging out..." : "Logout"}
+                {isLoggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : "Logout"}
               </Button>
             </AlertDialogFooter>
           </AlertDialogContent>

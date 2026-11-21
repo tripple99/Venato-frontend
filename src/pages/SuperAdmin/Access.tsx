@@ -52,6 +52,7 @@ import {
   UserPlus,
   UserCog,
   Store,
+  Loader2,
 } from "lucide-react";
 import { createAccessColumns } from "./columns/access-columns";
 import type { IProfile } from "@/model/user.model";
@@ -508,7 +509,7 @@ export default function AccessControl() {
                   className="bg-primary-venato hover:bg-primary-venato/90"
                   disabled={isMutating}
                 >
-                  {isMutating ? "Updating..." : "Update Role"}
+                  {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update Role"}
                 </Button>
               </DialogFooter>
             </form>
@@ -584,7 +585,7 @@ export default function AccessControl() {
                   className="bg-primary-venato hover:bg-primary-venato/90"
                   disabled={isMutating}
                 >
-                  {isMutating ? "Assigning..." : "Assign Market"}
+                  {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Assign Market"}
                 </Button>
               </DialogFooter>
             </form>
@@ -612,7 +613,7 @@ export default function AccessControl() {
                 handleRevokeConfirm();
               }}
             >
-              {isMutating ? "Revoking..." : "Revoke Access"}
+              {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Revoke Access"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -638,7 +639,7 @@ export default function AccessControl() {
               }}
               disabled={isMutating}
             >
-              {isMutating ? "Verifying..." : "Verify Account"}
+              {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify Account"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -664,7 +665,7 @@ export default function AccessControl() {
               }}
               disabled={isMutating}
             >
-              {isMutating ? "Deleting..." : "Delete Permanently"}
+              {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete Permanently"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -749,7 +750,7 @@ export default function AccessControl() {
                   className="bg-primary-venato hover:bg-primary-venato/90"
                   disabled={isMutating}
                 >
-                  {isMutating ? "Inviting..." : "Send Invite"}
+                  {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Invite"}
                 </Button>
               </DialogFooter>
             </form>

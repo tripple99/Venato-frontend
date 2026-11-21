@@ -19,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Bookmark, Tag, MapPin, DollarSign, Layers, Calendar } from "lucide-react";
+import { Bookmark, Tag, MapPin, DollarSign, Layers, Calendar, Loader2 } from "lucide-react";
 import { createWatchlistColumns } from "./columns/watchlist-columns";
 import type { WatchList } from "@/model/watch-list.model";
 import watchListService from "@/service/watch-list.service";
@@ -229,7 +229,7 @@ export default function WatchList() {
                 handleRemoveConfirm();
               }}
             >
-              {isMutating ? "Removing..." : "Remove"}
+              {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Remove"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

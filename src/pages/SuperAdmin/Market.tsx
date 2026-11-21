@@ -41,6 +41,7 @@ import {
   Navigation,
   Flag,
   DollarSign,
+  Loader2,
 } from "lucide-react";
 import { createMarketColumns } from "./columns/market-columns";
 import type { IMarketData } from "@/model/market.model";
@@ -453,13 +454,13 @@ export default function MarketManagement() {
                   className="bg-primary-venato hover:bg-primary-venato/90"
                   disabled={isMutating}
                 >
-                  {isMutating
-                    ? isEditMode
-                      ? "Saving..."
-                      : "Creating..."
-                    : isEditMode
-                      ? "Save Changes"
-                      : "Create Market"}
+                  {isMutating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : isEditMode ? (
+                    "Save Changes"
+                  ) : (
+                    "Create Market"
+                  )}
                 </Button>
               </DialogFooter>
             </form>
@@ -487,7 +488,7 @@ export default function MarketManagement() {
                 handleDeleteConfirm();
               }}
             >
-              {isMutating ? "Deleting..." : "Delete"}
+              {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

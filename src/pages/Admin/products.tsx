@@ -28,6 +28,7 @@ import {
   MapPin,
   Calendar,
   Package,
+  Loader2,
 } from "lucide-react";
 import { createProductColumns } from "./columns/product-columns";
 import { type Products } from "@/types/products";
@@ -270,7 +271,7 @@ export default function Product() {
                 handleDeleteConfirm();
               }}
             >
-              {isMutating ? "Deleting..." : "Delete"}
+              {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -49,6 +49,7 @@ import {
   Power,
   Zap,
   Activity,
+  Loader2,
 } from "lucide-react";
 import { createAlertColumns } from "./columns/alert-columns";
 import type { Alert } from "@/model/alert.model";
@@ -569,7 +570,7 @@ export default function Alerts() {
                   className="bg-primary-venato hover:bg-primary-venato/90"
                   disabled={isMutating}
                 >
-                  {isMutating ? "Creating..." : "Create Alert"}
+                  {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create Alert"}
                 </Button>
               </DialogFooter>
             </form>
@@ -613,7 +614,7 @@ export default function Alerts() {
                   className="bg-primary-venato hover:bg-primary-venato/90"
                   disabled={isMutating}
                 >
-                  {isMutating ? "Saving..." : "Save Changes"}
+                  {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Changes"}
                 </Button>
               </DialogFooter>
             </form>
@@ -640,7 +641,7 @@ export default function Alerts() {
                 handleDeleteConfirm();
               }}
             >
-              {isMutating ? "Deleting..." : "Delete"}
+              {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

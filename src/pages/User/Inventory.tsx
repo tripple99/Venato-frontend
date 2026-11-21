@@ -40,7 +40,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Package, Plus, Box, MapPin, Scale } from "lucide-react";
+import { Package, Plus, Box, MapPin, Scale, Loader2 } from "lucide-react";
 import { createInventoryColumns } from "./columns/inventory-columns";
 import type { InventoryItem } from "@/model/inventory.model";
 import { IUnit } from "@/types/market.types";
@@ -379,7 +379,7 @@ export default function Inventory() {
                   className="bg-primary-venato hover:bg-primary-venato/90"
                   disabled={isMutating}
                 >
-                  {isMutating ? "Adding..." : "Add Item"}
+                  {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Item"}
                 </Button>
               </DialogFooter>
             </form>
@@ -406,7 +406,7 @@ export default function Inventory() {
                 handleDeleteConfirm();
               }}
             >
-              {isMutating ? "Removing..." : "Remove"}
+              {isMutating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Remove"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
